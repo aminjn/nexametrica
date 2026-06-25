@@ -4,20 +4,47 @@ import type { PageProps } from '../pages/types'
 
 // Ported from prototype lines 79–120: page title, search, role switcher (with
 // outside-click overlay), language toggle, notifications, assistant button.
-export function Topbar({ v }: PageProps) {
+export function Topbar({ v, ui }: PageProps & { ui?: any }) {
+  const isMobile = !!ui?.isMobile
   return (
     <header
       style={css(
-        'height:62px;flex-shrink:0;border-bottom:1px solid var(--bd);background:rgba(13,15,18,.8);backdrop-filter:blur(10px);display:flex;align-items:center;gap:14px;padding:0 22px;z-index:20',
+        (isMobile
+          ? 'height:58px;gap:8px;padding:0 12px;'
+          : 'height:62px;gap:14px;padding:0 22px;') +
+          'flex-shrink:0;border-bottom:1px solid var(--bd);background:rgba(13,15,18,.8);backdrop-filter:blur(10px);display:flex;align-items:center;z-index:20',
       )}
     >
+      {isMobile ? (
+        <button
+          onClick={() => ui?.setNavOpen?.(!ui?.navOpen)}
+          aria-label="menu"
+          style={css(
+            'width:38px;height:38px;flex-shrink:0;background:var(--card);border:1px solid var(--bd);border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--tx)',
+          )}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+            <path d="M3 6h18M3 12h18M3 18h18" />
+          </svg>
+        </button>
+      ) : null}
       <div style={css('flex:1;display:flex;align-items:center;gap:14px;min-width:0')}>
-        <div>
-          <div style={css('font-size:16px;font-weight:700;line-height:1.2')}>{v.pageTitle}</div>
-          <div style={css('font-size:11.5px;color:var(--mut)')}>{v.pageSub}</div>
+        <div style={css('min-width:0')}>
+          <div
+            style={css(
+              (isMobile ? 'font-size:14px;' : 'font-size:16px;') +
+                'font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis',
+            )}
+          >
+            {v.pageTitle}
+          </div>
+          {isMobile ? null : (
+            <div style={css('font-size:11.5px;color:var(--mut)')}>{v.pageSub}</div>
+          )}
         </div>
       </div>
 
+      {isMobile ? null : (
       <div style={css('position:relative;width:280px;max-width:30vw')}>
         <svg
           width="16"
@@ -38,6 +65,7 @@ export function Topbar({ v }: PageProps) {
           focus="border-color:var(--ac)"
         />
       </div>
+      )}
 
       <div style={css('position:relative')}>
         <div
@@ -59,7 +87,7 @@ export function Topbar({ v }: PageProps) {
           >
             {v.roleIni}
           </span>
-          {v.roleLabel}
+          {isMobile ? null : v.roleLabel}
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--mut)" strokeWidth="2">
             <path d="m6 9 6 6 6-6" />
           </svg>
@@ -111,7 +139,7 @@ export function Topbar({ v }: PageProps) {
 
       <Box
         as="button"
-        css="position:relative;width:38px;height:38px;background:var(--card);border:1px solid var(--bd);border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center"
+        css={`position:relative;width:38px;height:38px;background:var(--card);border:1px solid var(--bd);border-radius:10px;cursor:pointer;align-items:center;justify-content:center;display:${isMobile ? 'none' : 'flex'}`}
         hover="border-color:var(--bd2)"
       >
         <svg

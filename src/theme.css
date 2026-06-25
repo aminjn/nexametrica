@@ -102,3 +102,16 @@ select,
 textarea {
   font-family: inherit;
 }
+
+/* ---------- Mobile / responsive ---------- */
+@media (max-width: 820px) {
+  /* Pages use inline grids with fixed column counts; stack them on phones. */
+  main div[style*='grid-template-columns'] {
+    grid-template-columns: 1fr !important;
+  }
+  /* Keep hand-built SVG dataviz inside its card. */
+  main svg {
+    max-width: 100%;
+  }
+}
+

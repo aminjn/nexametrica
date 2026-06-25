@@ -4,13 +4,24 @@ import type { PageProps } from '../pages/types'
 
 // Ported from prototype lines 29–76: brand, accordion nav groups (with collapse,
 // children sub-items, AI badges) and the role identity chip.
-export function Sidebar({ v }: PageProps) {
+export function Sidebar({ v, ui }: PageProps & { ui?: any }) {
+  const isMobile = !!ui?.isMobile
+  const open = !!ui?.navOpen
+  const hidden = v.dir === 'rtl' ? 'translateX(100%)' : 'translateX(-100%)'
+  const asideCss = isMobile
+    ? `width:248px;max-width:84vw;background:var(--bg2);border-inline-start:1px solid var(--bd);height:100vh;position:fixed;top:0;inset-inline-start:0;z-index:60;display:flex;flex-direction:column;transform:${open ? 'translateX(0)' : hidden};transition:transform .25s ease;box-shadow:0 0 50px rgba(0,0,0,.55)`
+    : 'width:248px;flex-shrink:0;background:var(--bg2);border-inline-start:1px solid var(--bd);height:100vh;position:sticky;top:0;display:flex;flex-direction:column'
   return (
-    <aside
-      style={css(
-        'width:248px;flex-shrink:0;background:var(--bg2);border-inline-start:1px solid var(--bd);height:100vh;position:sticky;top:0;display:flex;flex-direction:column',
-      )}
-    >
+    <>
+      {isMobile ? (
+        <div
+          onClick={() => ui?.setNavOpen?.(false)}
+          style={css(
+            `position:fixed;inset:0;z-index:59;background:rgba(4,6,9,.5);transition:opacity .25s;opacity:${open ? '1' : '0'};pointer-events:${open ? 'auto' : 'none'}`,
+          )}
+        ></div>
+      ) : null}
+      <aside style={css(asideCss)}>
       <div
         style={css(
           'padding:20px 20px 16px;display:flex;align-items:center;gap:11px;border-bottom:1px solid var(--bd)',
@@ -159,6 +170,7 @@ export function Sidebar({ v }: PageProps) {
           )}
         ></div>
       </div>
-    </aside>
+      </aside>
+    </>
   )
 }

@@ -1,0 +1,104 @@
+/* Design tokens + globals ported verbatim from the prototype's root <div> and
+   <style> helmet block. CSS custom properties drive the whole dark theme. */
+:root {
+  --bg: #0d0f12;
+  --bg2: #121519;
+  --card: #16191c;
+  --card2: #1b1f25;
+  --raised: #21262e;
+  --bd: #262b33;
+  --bd2: #323843;
+  --tx: #e7e9ec;
+  --sub: #9097a0;
+  --mut: #646b74;
+  --ac: #a3e635;
+  --acd: rgba(163, 230, 53, 0.13);
+  --ai: #38bdf8;
+  --aid: rgba(56, 189, 248, 0.13);
+  --warn: #f59e0b;
+  --warnd: rgba(245, 158, 11, 0.14);
+  --dng: #ef4444;
+  --dngd: rgba(239, 68, 68, 0.13);
+  --good: #4ade80;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+html,
+body,
+#root {
+  height: 100%;
+}
+body {
+  font-family: 'Vazirmatn Variable', 'Vazirmatn', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--tx);
+  font-size: 14px;
+  line-height: 1.6;
+  font-feature-settings: 'ss01';
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+::-webkit-scrollbar-thumb {
+  background: #2b313a;
+  border-radius: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::selection {
+  background: rgba(163, 230, 53, 0.3);
+}
+
+@keyframes nx-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes nx-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes nx-bar {
+  0%,
+  100% {
+    transform: scaleY(0.4);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+@keyframes nx-fadein {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes nx-dash {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+input,
+button,
+select,
+textarea {
+  font-family: inherit;
+}

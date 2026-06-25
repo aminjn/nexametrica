@@ -1,25 +1,77 @@
-# CODING AGENTS: READ THIS FIRST
+# نکسا متریکا · Nexa Metrica
 
-This is a **handoff bundle** from Claude Design (claude.ai/design).
+پلتفرم آنالیز فوتبال **هوش‌مصنوعی‌محور**، دوزبانه (فارسی RTL پیش‌فرض / انگلیسی LTR).
+An AI-first football-analysis platform — bilingual, Persian (RTL) by default.
 
-A user mocked up designs in HTML/CSS/JS using an AI design tool, then exported this bundle so a coding agent can implement the designs for real.
+این مخزن، پیاده‌سازی واقعیِ طرحِ Claude Design است با **React + Vite + TypeScript**.
+This repo is the production implementation of the Claude Design prototype, built in React + Vite + TypeScript.
 
-## What you should do — IMPORTANT
+---
 
-**Read the chat transcripts first.** There are 1 chat transcript(s) in `chats/`. The transcripts show the full back-and-forth between the user and the design assistant — they tell you **what the user actually wants** and **where they landed** after iterating. Don't skip them. The final HTML files are the output, but the chat is where the intent lives.
+## ویژگی‌ها · Features
 
-**Read `project/Nexa Metrica.dc.html` in full.** The user had this file open when they triggered the handoff, so it's almost certainly the primary design they want built. Read it top to bottom — don't skim. Then **follow its imports**: open every file it pulls in (shared components, CSS, scripts) so you understand how the pieces fit together before you start implementing.
+- **۲۴ صفحه‌ی کامل و کارکُننده** در ۸ گروه ناوبری: داشبورد، کتابخانه ویدیو، فضای ابری
+  (GameCloud)، وضعیت مدل، پخش و ردیابی، کدگذاری، تایم‌لاین و ماتریس، ادغام داده،
+  رسم روی ویدیو (Telestration)، آنالیز تاکتیکی، آنالیز فیزیکی، پروفایل بازیکن،
+  اسکاوتینگ، بازیکنان و تیم‌های لیگ، آنالیز خرید، برنامه بازی‌ها، برنامه تمرینی،
+  تغذیه، گزارش‌ها، کلیپ‌ها، اشتراک و فیدبک، دستیار هوشمند، تنظیمات، و سوپر ادمین.
+- **دوزبانه و RTL/LTR** — کلید تغییر زبان کل چیدمان را آینه‌ای می‌کند (پیش‌فرض فارسی).
+- **۶ نقش کاربری** با منو/خانه‌ی مخصوص: آنالیزور، آنالیزور ارشد، مربی، بازیکن،
+  مدیر باشگاه، سوپر ادمین (کلید «مشاهده به‌عنوان نقش» در نوار بالا).
+- **لایه‌ی AI در سراسر** — نشان «تولید AI»، درصد اطمینان، دکمه‌ی «چرا؟»،
+  تأیید/اصلاح، خط لوله‌ی پردازش، و دستیار کشویی شخصی‌سازی‌شده.
+- **دیتاویز دست‌ساز** — هیت‌مپ، شبکه‌ی پاس، رادار، کنترل فضا، مناطق سرعتی،
+  نمودار روند دقت مدل، ماتریس پاس، اسکتر پلات — همه SVG، بدون وابستگی به کتابخانه.
+- **فونت Vazirmatn خودمیزبان** (بدون CDN خارجی) — مناسب میزبانی داخل ایران/آروان‌کلاد.
 
-**If anything is ambiguous, ask the user to confirm before you start implementing.** It's much cheaper to clarify scope up front than to build the wrong thing.
+## اجرا · Getting started
 
-## About the design files
+```bash
+npm install
+npm run dev        # http://localhost:5173
+```
 
-The design medium is **HTML/CSS/JS** — these are prototypes, not production code. Your job is to **recreate them pixel-perfectly** in whatever technology makes sense for the target codebase (React, Vue, native, whatever fits). Match the visual output; don't copy the prototype's internal structure unless it happens to fit.
+ساخت نسخه‌ی تولید و پیش‌نمایش:
 
-**Don't render these files in a browser or take screenshots unless the user asks you to.** Everything you need — dimensions, colors, layout rules — is spelled out in the source. Read the HTML and CSS directly; a screenshot won't tell you anything they don't.
+```bash
+npm run build      # خروجی استاتیک در dist/
+npm run preview
+```
 
-## Bundle contents
+`npm run typecheck` هم تایپ‌چک کامل را اجرا می‌کند.
 
-- `README.md` — this file
-- `chats/` — conversation transcripts (read these!)
-- `project/` — the `# پلتفرم آنالیز فوتبال AI` project files (HTML prototypes, assets, components)
+## معماری · Architecture
+
+طرح اصلی یک کامپوننت React (با runtime اختصاصی Claude Design) بود. در این پورت:
+
+- `src/engine.ts` — **موتور**: داده‌ها، رشته‌های دوزبانه (i18n)، پیکربندی نقش/منو،
+  ویومدل‌ها (`vm_*`)، و موتور نمودار، **عیناً** از طرح تأییدشده استخراج شده‌اند
+  (با `scripts/extract-engine.mjs`). فقط پایه‌ی React.Component با یک پایه‌ی
+  سبکِ قابل‌مشاهده (`Logic` با `state`/`setState`/`subscribe`) جایگزین شده تا همان
+  منطق، یک اپ واقعی Vite را بچرخاند. برای بازتولید: `node scripts/extract-engine.mjs`.
+- `src/App.tsx` — پوسته: سایدبار، نوار بالا، پنل دستیار، مودال، و سوییچ صفحه.
+- `src/pages/*` — هر صفحه یک کامپوننت که از `v.vm` (خروجی ویومدل همان صفحه) می‌خواند.
+- `src/components/Box.tsx` + `src/lib/css.ts` — رشته‌های CSS طرح را عیناً نگه می‌دارند
+  (`css('...')`) و حالت‌های hover/focus را مدیریت می‌کنند؛ خواصِ منطقی CSS
+  (`inset-inline-*`, `padding-inline-*`) آینه‌سازی RTL/LTR را خودکار می‌کنند.
+- `PORTING.md` — راهنمای ترجمه‌ی قالب‌ها (HTML → TSX) که برای پورت استفاده شد.
+
+طرح اصلی و گفتگوها برای مرجع در `project/` و `chats/` نگه داشته شده‌اند
+(`project/HANDOFF.md` همان یادداشت اولیه‌ی هندآف است).
+
+## بررسی · Verification
+
+`scripts/smoke.mjs` با Chromium بدون‌سر، هر ۲۴ صفحه را در هر دو زبان + ۵ نقش +
+جهت RTL/LTR رندر می‌کند و خطاهای کنسول/صفحه را می‌گیرد:
+
+```bash
+npm run dev &
+node scripts/smoke.mjs
+node scripts/shots.mjs   # اسکرین‌شات‌های تأیید در shots/
+```
+
+## استقرار · Deployment
+
+این یک **SPA استاتیک** است (بدون بک‌اند، ناوبری مبتنی بر state، بدون نیاز به
+SPA-fallback). محتوای `dist/` را روی هر میزبان استاتیک بگذارید.
+راهنمای کامل استقرار روی **آروان‌کلاد** در [`DEPLOY.md`](./DEPLOY.md).

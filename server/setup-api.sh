@@ -17,17 +17,10 @@ python3 -m venv .venv
 .venv/bin/pip install --upgrade pip -q
 .venv/bin/pip install -r requirements.txt -q
 
-# .env را بساز و ADMIN_TOKEN را خودکار تولید کن (اگر خالی است)
+# .env را بساز (بدون توکن ادمین؛ احراز هویت فعلاً غیرفعال است)
 [ -f .env ] || cp .env.example .env
-if ! grep -qE '^ADMIN_TOKEN=.+' .env; then
-  GEN_TOKEN="$(openssl rand -hex 24 2>/dev/null || head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')"
-  if grep -qE '^ADMIN_TOKEN=' .env; then
-    sed -i "s|^ADMIN_TOKEN=.*|ADMIN_TOKEN=${GEN_TOKEN}|" .env
-  else
-    echo "ADMIN_TOKEN=${GEN_TOKEN}" >> .env
-  fi
-fi
-ADMIN_TOKEN_VALUE="$(grep -E '^ADMIN_TOKEN=' .env | head -1 | cut -d= -f2-)"
+# اگر از قبل ADMIN_TOKEN داشت، خالی‌اش کن تا پنل بدون توکن باز شود
+sed -i 's|^ADMIN_TOKEN=.*|ADMIN_TOKEN=|' .env 2>/dev/null || true
 
 echo "▶ ساخت سرویس systemd…"
 cat > /etc/systemd/system/nexametrica-api.service <<UNIT
@@ -55,13 +48,7 @@ systemctl --no-pager --lines=0 status nexametrica-api | head -4 || true
 
 echo
 echo "=================================================================="
-echo "✅ API بالا آمد (http://127.0.0.1:8000)."
-echo
-echo "🔑 ADMIN_TOKEN شما (این را کپی کن):"
-echo
-echo "      ${ADMIN_TOKEN_VALUE}"
-echo
-echo "در سایت برو: سوپر ادمین → API هوش مصنوعی → این توکن را وارد کن،"
-echo "بعد کلید و مدلِ LLM را بگذار و «تست اتصال» بزن."
+echo "✅ API بالا آمد (http://127.0.0.1:8000) — بدون توکن."
+echo "در سایت برو: سوپر ادمین → API هوش مصنوعی → کلید و مدل را بگذار."
 echo "=================================================================="
 echo "تست سلامت:  curl -s localhost:8000/api/health"

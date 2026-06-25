@@ -32,10 +32,9 @@ ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
 
 
 def require_admin(x_admin_token: str = Header(default="")):
-    if not ADMIN_TOKEN:
-        raise HTTPException(status_code=503, detail="admin not configured: set ADMIN_TOKEN in server/.env")
-    if x_admin_token != ADMIN_TOKEN:
-        raise HTTPException(status_code=401, detail="invalid admin token")
+    # Admin auth intentionally DISABLED for now (the project will be secured
+    # later). Left as a dependency so it can be re-enabled in one place.
+    return
 
 
 # ---------------- models ----------------

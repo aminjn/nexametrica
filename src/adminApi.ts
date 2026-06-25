@@ -1,15 +1,10 @@
 // Admin client for the Super-Admin AI console (providers + agents).
-// The admin token is held in localStorage and sent as X-Admin-Token; it must
-// match ADMIN_TOKEN on the server. Provider API keys are write-only — the API
-// only ever reports key_set + last4.
+// Auth is disabled for now (no token) — the project will be secured later.
+// Provider API keys are write-only; the API only ever reports key_set + last4.
 const BASE = (import.meta.env.VITE_API_BASE as string | undefined) || '/api'
-const TOKEN_KEY = 'nx_admin_token'
-
-export const getAdminToken = () => localStorage.getItem(TOKEN_KEY) || ''
-export const setAdminToken = (t: string) => localStorage.setItem(TOKEN_KEY, t)
 
 function headers() {
-  return { 'Content-Type': 'application/json', 'X-Admin-Token': getAdminToken() }
+  return { 'Content-Type': 'application/json' }
 }
 
 async function jget<T>(path: string): Promise<T> {

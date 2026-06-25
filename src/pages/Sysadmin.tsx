@@ -1,7 +1,7 @@
 import { Fragment } from 'react'
 import { Box } from '../components/Box'
 import { css } from '../lib/css'
-import { AdminLlmConfig } from '../components/AdminLlmConfig'
+import { AdminAiConfig } from '../components/AdminAiConfig'
 import type { PageProps } from './types'
 
 // Ported from prototype lines 1235–1419. vm = v.vm (engine.vm_sysadmin()).
@@ -210,7 +210,8 @@ export function Sysadmin({ e, v }: PageProps) {
 
         {vm.sy_aiapi ? (
           <>
-          <AdminLlmConfig v={v} />
+          <AdminAiConfig v={v} />
+          {false && (
           <div style={css('display:grid;grid-template-columns:1.3fr 1fr;gap:14px')}>
             <div
               style={css(
@@ -376,6 +377,7 @@ export function Sysadmin({ e, v }: PageProps) {
               </div>
             </div>
           </div>
+          )}
           </>
         ) : null}
 

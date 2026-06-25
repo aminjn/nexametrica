@@ -2,6 +2,12 @@ node_modules
 dist
 shots
 *.log
+
+# backend
+server/.env
+server/.venv
+__pycache__/
+*.pyc
 dist-ssr
 *.local
 .vite

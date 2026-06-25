@@ -4,6 +4,7 @@ import '@fontsource-variable/vazirmatn'
 import './theme.css'
 import { App } from './App'
 import { eng } from './engine'
+import './aiWire'
 
 // Dev-only: expose the engine for smoke tests / debugging. Tree-shaken in prod.
 if (import.meta.env.DEV) {

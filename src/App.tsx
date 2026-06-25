@@ -6,6 +6,7 @@ import { Sidebar } from './components/Sidebar'
 import { Topbar } from './components/Topbar'
 import { AIPanel } from './components/AIPanel'
 import { Modal } from './components/Modal'
+import { InstallBar } from './components/InstallBar'
 import { PAGES, Placeholder } from './pages/registry'
 
 export function App() {
@@ -49,6 +50,7 @@ export function App() {
       </div>
       <AIPanel {...props} />
       <Modal {...props} />
+      <InstallBar v={v} />
     </div>
   )
 }

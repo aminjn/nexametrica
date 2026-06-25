@@ -107,30 +107,23 @@ jobs:
 ## فعال‌کردن دستیار هوشمند (API بک‌اند)
 
 دستیار با یک سرویس FastAPI کوچک (`server/`) به LLM وصل می‌شود؛ کلید API فقط
-سمت سرور می‌ماند و هیچ‌وقت در مرورگر لو نمی‌رود. روی همان سرور آروان:
+سمت سرور می‌ماند و هیچ‌وقت در مرورگر لو نمی‌رود. **بدون ویرایش فایل** — فقط کپی‌پیست:
 
 ```bash
-cd ~/nexametrica/server
-cp .env.example .env
-nano .env          # LLM_API_KEY و LLM_BASE_URL و LLM_MODEL را بگذار
-sudo bash setup-api.sh     # venv + نصب + سرویس systemd روی 127.0.0.1:8000
+cd ~/nexametrica && git pull
+sudo bash scripts/arvan-deploy.sh    # فرانت + nginx (شامل پراکسی /api)
+sudo bash server/setup-api.sh        # بک‌اند؛ ADMIN_TOKEN را خودش می‌سازد و چاپ می‌کند
 ```
 
-سپس nginx را با کانفیگ به‌روز (که `/api` را پراکسی می‌کند) ری‌لود کن — اگر قبلاً
-`arvan-deploy.sh` را اجرا کرده‌ای، یک‌بار دیگر بزن تا کانفیگ جدید کپی شود:
+اسکریپتِ دوم آخر کار یک **ADMIN_TOKEN** چاپ می‌کند. آن را کپی کن، در سایت برو به
+**سوپر ادمین → API هوش مصنوعی**، توکن را وارد کن، بعد **کلید / مدل / Endpoint**
+ارائه‌دهنده‌ات را بگذار و **«تست اتصال»** بزن. تمام — کلید LLM را هیچ‌جا دستی
+ویرایش نمی‌کنی.
 
+تست سلامت:
 ```bash
-cd ~/nexametrica && git pull && sudo bash scripts/arvan-deploy.sh
+curl -s localhost:8000/api/health
 ```
 
-تست:
-```bash
-curl -s localhost:8000/api/health        # باید llm_configured: true باشد
-```
-
-**انتخاب ارائه‌دهنده** (در `server/.env`): نمونه‌ها برای OpenAI / Gemini
-(OpenAI-compatible) / DeepSeek در `server/.env.example` هست. اگر از سرور ایران
-`api.openai.com` بلاک بود، `LLM_BASE_URL` را به گیت‌وی/پروکسیِ خودت بگذار.
-
-> اگر API تنظیم نشده باشد، دستیار به‌صورت خودکار به پاسخ پیش‌فرض برمی‌گردد و
+> اگر API هنوز تنظیم نشده باشد، دستیار به‌صورت خودکار به پاسخ پیش‌فرض برمی‌گردد و
 > سایت هیچ‌وقت نمی‌شکند.

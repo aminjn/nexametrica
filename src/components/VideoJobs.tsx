@@ -73,8 +73,8 @@ export function VideoJobs({ v }: { v: Record<string, any> }) {
       await uploadVideo(f)
       setMsg(L('آپلود شد — در صفِ پردازشِ worker.', 'Uploaded — queued for the worker.'))
       refresh()
-    } catch {
-      setMsg(L('آپلود نشد (API در دسترس است؟).', 'Upload failed (is the API up?).'))
+    } catch (err) {
+      setMsg(L('آپلود نشد: ', 'Upload failed: ') + String((err as Error).message))
     } finally {
       setBusy(false)
       if (fileRef.current) fileRef.current.value = ''

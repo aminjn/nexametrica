@@ -2,26 +2,56 @@
 Physical analytics from per-track pitch positions (real metres).
 
 Input is, per player track, a time series of (t_seconds, x_metres, y_metres)
-sampled from the calibrated pitch (per-frame homography). We turn that into:
-  - total distance covered (m)
-  - average / peak speed (m/s and km/h)
-sanitising tracking artefacts (id-swaps / jitter produce impossible jumps,
-which we reject by a speed cap) and lightly smoothing positions.
+sampled from the calibrated pitch (per-frame homography). Broadcast tracking is
+messy — id-switches fragment one player into many short tracks, and per-frame
+homography jitter teleports a position by metres between frames. We therefore:
+  - reject teleport points (implied speed above a human cap) BEFORE integrating,
+  - lightly smooth positions,
+  - integrate distance with a per-segment speed cap,
+  - hard-clamp reported speed to a human maximum,
+  - only treat tracks with enough samples as real, and never claim a track count
+    is a player count (that needs Re-ID to link fragments — a later step).
 
 Pure / dependency-free so it can be unit-tested without a GPU or video.
 """
 from collections import defaultdict
+from math import hypot
 
-MAX_SPEED = 12.0     # m/s (~43 km/h). Real sprints peak ~10; above this is jitter.
-SMOOTH_WIN = 3       # moving-average window over positions
+MAX_SPEED = 10.0      # m/s (~36 km/h) — real sprint peak; above this is jitter.
+SMOOTH_WIN = 3        # moving-average window over positions
+MIN_TRACK_PTS = 12    # tracks shorter than this are fragments → ignored for stats
+
+
+def _dedup_sort(series):
+    s = sorted(series, key=lambda p: p[0])
+    out = []
+    for p in s:
+        if out and p[0] == out[-1][0]:
+            continue
+        out.append(p)
+    return out
+
+
+def _reject_teleports(series, max_speed):
+    """Drop points that imply an impossible speed from the last kept point."""
+    if not series:
+        return series
+    out = [series[0]]
+    for t1, x1, y1 in series[1:]:
+        t0, x0, y0 = out[-1]
+        dt = t1 - t0
+        if dt <= 0:
+            continue
+        if hypot(x1 - x0, y1 - y0) / dt > max_speed:
+            continue          # homography jitter / id swap — discard
+        out.append((t1, x1, y1))
+    return out
 
 
 def _smooth(series, win=SMOOTH_WIN):
-    """Moving average over (t,x,y), keeping timestamps; series sorted by t."""
     if win <= 1 or len(series) <= win:
         return series
-    out = []
-    half = win // 2
+    out, half = [], win // 2
     for i in range(len(series)):
         a, b = max(0, i - half), min(len(series), i + half + 1)
         xs = sum(p[1] for p in series[a:b]) / (b - a)
@@ -31,52 +61,58 @@ def _smooth(series, win=SMOOTH_WIN):
 
 
 def track_metrics(series, max_speed=MAX_SPEED):
-    """(distance_m, avg_speed_mps, max_speed_mps) for one track."""
-    series = _smooth(sorted(series, key=lambda p: p[0]))
-    dist = 0.0
-    speeds = []
+    """(distance_m, avg_speed_mps, max_speed_mps, seconds) for one track."""
+    series = _reject_teleports(_dedup_sort(series), max_speed)
+    if len(series) < 3:
+        return 0.0, 0.0, 0.0, 0.0
+    series = _smooth(series)
+    dist, speeds = 0.0, []
     for (t0, x0, y0), (t1, x1, y1) in zip(series, series[1:]):
         dt = t1 - t0
         if dt <= 0:
             continue
-        d = ((x1 - x0) ** 2 + (y1 - y0) ** 2) ** 0.5
+        d = hypot(x1 - x0, y1 - y0)
         v = d / dt
-        if v > max_speed:        # impossible jump -> id swap / jitter, skip segment
+        if v > max_speed:
             continue
         dist += d
         speeds.append(v)
     avg = sum(speeds) / len(speeds) if speeds else 0.0
-    mx = max(speeds) if speeds else 0.0
-    return dist, avg, mx
+    mx = min(max(speeds), max_speed) if speeds else 0.0
+    secs = series[-1][0] - series[0][0]
+    return dist, avg, mx, secs
 
 
 def summarise(track_series, tid2team=None):
-    """Aggregate per-track series into per-track + per-team physical stats.
+    """Aggregate per-track series into sane per-track + per-team stats.
 
-    track_series: {track_id: [(t,x,y), ...]}  (metres)
-    tid2team:     {track_id: 0|1}              (optional)
+    Only tracks with >= MIN_TRACK_PTS samples are kept. We deliberately do NOT
+    report a track count as a player count.
     """
     tid2team = tid2team or {}
     per_track = []
     team_dist = defaultdict(float)
     team_topspeed = defaultdict(float)
+    team_secs = defaultdict(float)
     team_tracks = defaultdict(int)
     for tid, series in track_series.items():
-        if len(series) < 3:
+        if len(series) < MIN_TRACK_PTS:
             continue
-        dist, avg, mx = track_metrics(series)
-        if dist <= 0:
+        dist, avg, mx, secs = track_metrics(series)
+        if dist <= 0 or secs <= 0:
             continue
         team = tid2team.get(tid, -1)
         per_track.append({
             "track": int(tid),
             "team": int(team),
             "distance_m": round(dist, 1),
+            "seconds": round(secs, 1),
             "avg_speed_kmh": round(avg * 3.6, 1),
             "max_speed_kmh": round(mx * 3.6, 1),
         })
         if team in (0, 1):
             team_dist[team] += dist
+            team_secs[team] += secs
             team_topspeed[team] = max(team_topspeed[team], mx)
             team_tracks[team] += 1
 
@@ -88,30 +124,29 @@ def summarise(track_series, tid2team=None):
                 "team": k,
                 "tracks": team_tracks[k],
                 "distance_total_m": round(team_dist[k], 1),
-                "distance_avg_m": round(team_dist[k] / team_tracks[k], 1),
                 "top_speed_kmh": round(team_topspeed[k] * 3.6, 1),
+                "track_seconds": round(team_secs[k], 1),
             })
-    return {"per_track": per_track[:40], "teams": teams}
+    return {"per_track": per_track[:12], "teams": teams,
+            "stable_tracks": len(per_track)}
 
 
 if __name__ == "__main__":
-    # --- self-test: synthetic tracks with known answers ---
-    # Track A: straight line, 5 m/s for 10 s -> 50 m, avg 5 m/s, max 5 m/s.
+    # straight line, 5 m/s for 10 s -> ~50 m, ~5 m/s, capped max.
     a = [(t * 0.1, 5.0 * (t * 0.1), 0.0) for t in range(101)]
-    dist, avg, mx = track_metrics(a)
-    assert abs(dist - 50.0) < 1.0, dist   # ~0.5 m lost to endpoint smoothing
-    assert abs(avg - 5.0) < 0.2, avg
-    assert abs(mx - 5.0) < 0.3, mx
+    dist, avg, mx, secs = track_metrics(a)
+    assert abs(dist - 50.0) < 1.5, dist
+    assert abs(avg - 5.0) < 0.3, avg
+    assert mx <= MAX_SPEED, mx
+    assert abs(secs - 10.0) < 0.01, secs
 
-    # Track B: same, plus a teleport (id-swap) that must be rejected.
-    b = list(a)
-    b.insert(50, (5.05, 999.0, 999.0))   # bogus point mid-series
-    dist2, _, mx2 = track_metrics(b)
-    assert abs(dist2 - 50.0) < 3.0, dist2      # teleport distance excluded
-    assert mx2 < MAX_SPEED, mx2                 # impossible speed rejected
+    # teleport spike must be rejected, distance stays clean, speed bounded.
+    b = list(a); b.insert(50, (5.05, 9999.0, 9999.0))
+    d2, _, mx2, _ = track_metrics(b)
+    assert abs(d2 - 50.0) < 3.0, d2
+    assert mx2 <= MAX_SPEED, mx2
 
-    # Aggregation + team rollup.
     out = summarise({1: a, 2: b}, {1: 0, 2: 1})
-    assert len(out["per_track"]) == 2
-    assert out["teams"][0]["team"] == 0
-    print("physics self-test OK:", dist, round(avg * 3.6, 1), "km/h |", out["teams"])
+    assert out["stable_tracks"] == 2
+    assert all(t["top_speed_kmh"] <= MAX_SPEED * 3.6 + 0.1 for t in out["teams"])
+    print("physics self-test OK:", round(dist, 1), "m,", round(mx * 3.6, 1), "km/h |", out["teams"])

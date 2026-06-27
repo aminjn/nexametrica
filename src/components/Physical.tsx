@@ -37,10 +37,16 @@ export function Physical({ v, job }: { v: Record<string, any>; job: any }) {
         </span>
         <div style={css('font-weight:800;font-size:13.5px')}>{L('تحلیلِ فیزیکیِ واقعی', 'Real physical analytics')}</div>
       </div>
-      <div style={css('font-size:11px;color:var(--mut);margin-bottom:12px')}>
+      <div style={css('font-size:11px;color:var(--mut);margin-bottom:10px;line-height:1.7')}>
         {L(
-          `مختصاتِ واقعیِ زمین (متر) از هوموگرافیِ هر فریم — زمینِ ${faN(plen)}×${faN(pwid)} متر، ${faN(phys.calibrated_tracks)} ردِ کالیبره‌شده.`,
-          `Real pitch coordinates (metres) from per-frame homography — ${plen}×${pwid} m pitch, ${phys.calibrated_tracks} calibrated tracks.`,
+          `مختصاتِ واقعیِ زمین (متر) از هوموگرافیِ هر فریم — زمینِ ${faN(plen)}×${faN(pwid)} متر، ${faN(phys.stable_tracks || 0)} ردِ پایدار.`,
+          `Real pitch coordinates (metres) from per-frame homography — ${plen}×${pwid} m pitch, ${phys.stable_tracks || 0} stable tracks.`,
+        )}
+      </div>
+      <div style={css('font-size:10.5px;color:var(--warn);background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);border-radius:8px;padding:8px 10px;margin-bottom:12px;line-height:1.7')}>
+        {L(
+          'این آمار per «ردِ ردیابی» است، نه per بازیکنِ کامل. ردیاب یک بازیکن را به چند ردِ کوتاه می‌شکند؛ مسافتِ کاملِ هر بازیکن در کلِ بازی نیاز به مرحله‌ی Re-ID دارد (وصل‌کردنِ ردها) — قدمِ بعدی. سرعت‌ها و هیت‌مپ واقعی‌اند.',
+          'Stats are per tracking-segment, not per full player. The tracker splits a player into several short tracks; full per-player match distance needs a Re-ID step — coming next. Speeds and heatmap are real.',
         )}
       </div>
 
@@ -64,10 +70,10 @@ export function Physical({ v, job }: { v: Record<string, any>; job: any }) {
                 <span style={css('font-size:12.5px;font-weight:800')}>{L('تیم', 'Team')} {tm.team === 0 ? 'A' : 'B'}</span>
               </div>
               <div style={css('display:grid;grid-template-columns:1fr 1fr;gap:8px')}>
-                <Stat lab={L('مسافتِ کل', 'Total dist')} val={`${faN(Math.round(tm.distance_total_m))} ${L('م', 'm')}`} />
-                <Stat lab={L('میانگین/بازیکن', 'Avg/player')} val={`${faN(Math.round(tm.distance_avg_m))} ${L('م', 'm')}`} />
                 <Stat lab={L('بیشینه سرعت', 'Top speed')} val={`${faN(tm.top_speed_kmh)} ${L('کیلومتر/ساعت', 'km/h')}`} />
-                <Stat lab={L('بازیکنان', 'Players')} val={faN(tm.tracks)} />
+                <Stat lab={L('ردهای پایدار', 'Stable tracks')} val={faN(tm.tracks)} />
+                <Stat lab={L('مسافتِ ردها (جمع)', 'Tracks distance (sum)')} val={`${faN(Math.round(tm.distance_total_m))} ${L('م', 'm')}`} />
+                <Stat lab={L('زمانِ ردیابی', 'Tracked time')} val={`${faN(Math.round(tm.track_seconds || 0))} ${L('ث', 's')}`} />
               </div>
             </div>
           ))}
@@ -78,18 +84,19 @@ export function Physical({ v, job }: { v: Record<string, any>; job: any }) {
       {phys.per_track?.length ? (
         <div style={css('margin-bottom:14px')}>
           <div style={css('font-size:11px;font-weight:700;color:var(--sub);margin-bottom:7px')}>
-            {L('پرتکاپوترین بازیکن‌ها', 'Most active players')}
+            {L('پرتکاپوترین ردها (در بازه‌ی ردیابی)', 'Most active tracks (within their segment)')}
           </div>
           <div style={css('display:flex;flex-direction:column;gap:4px')}>
             {phys.per_track.slice(0, 8).map((p: any) => (
               <div key={p.track} style={css('display:flex;align-items:center;gap:9px;background:var(--bg2);border:1px solid var(--bd);border-radius:8px;padding:7px 11px')}>
                 <span style={css(`width:10px;height:10px;border-radius:3px;flex-shrink:0;background:${p.team === -1 ? 'var(--mut)' : colorOf(p.team)};border:1px solid rgba(255,255,255,.2)`)}></span>
-                <span style={css('font-size:11.5px;font-weight:700;width:54px')}>#{faN(p.track)}</span>
+                <span style={css('font-size:11.5px;font-weight:700;width:46px')}>#{faN(p.track)}</span>
                 <div style={css('flex:1;height:6px;background:var(--raised);border-radius:4px;overflow:hidden')}>
                   <div style={css(`height:100%;border-radius:4px;background:${p.team === -1 ? 'var(--mut)' : colorOf(p.team)};width:${Math.min(100, (p.distance_m / (phys.per_track[0].distance_m || 1)) * 100)}%`)}></div>
                 </div>
-                <span style={css('font-size:11.5px;font-weight:700;width:74px;text-align:end')}>{faN(Math.round(p.distance_m))} {L('م', 'm')}</span>
-                <span style={css('font-size:11px;color:var(--mut);width:84px;text-align:end')}>{faN(p.max_speed_kmh)} {L('ک/س', 'km/h')}</span>
+                <span style={css('font-size:11px;color:var(--mut);width:50px;text-align:end')}>{faN(Math.round(p.seconds || 0))}{L('ث', 's')}</span>
+                <span style={css('font-size:11.5px;font-weight:700;width:66px;text-align:end')}>{faN(Math.round(p.distance_m))} {L('م', 'm')}</span>
+                <span style={css('font-size:11px;color:var(--mut);width:78px;text-align:end')}>{faN(p.max_speed_kmh)} {L('ک/س', 'km/h')}</span>
               </div>
             ))}
           </div>

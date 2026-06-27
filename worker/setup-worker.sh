@@ -7,7 +7,9 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 echo "▶ پیش‌نیازها…"
-sudo apt-get update -y
+# توجه: ممکن است یک مخزنِ شخص‌ثالث (مثل NVIDIA CUDA) از ایران بلاک باشد و
+# apt-get update خطا بدهد؛ مهم نیست چون تورچ را با pip نصب می‌کنیم. پس ادامه بده.
+sudo apt-get update -y || true
 sudo apt-get install -y python3 python3-venv python3-pip ffmpeg
 
 python3 -m venv .venv

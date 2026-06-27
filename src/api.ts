@@ -21,6 +21,30 @@ export async function assistantChat(
   return d.text
 }
 
+export type Job = {
+  id: string
+  name: string
+  status: string
+  source: string
+  created: number
+  result: any
+  error?: string
+}
+
+export async function uploadVideo(file: File): Promise<Job> {
+  const fd = new FormData()
+  fd.append('file', file)
+  const r = await fetch(`${BASE}/videos`, { method: 'POST', body: fd })
+  if (!r.ok) throw new Error(`upload ${r.status}`)
+  return r.json()
+}
+
+export async function listJobs(): Promise<{ jobs: Job[] }> {
+  const r = await fetch(`${BASE}/jobs`)
+  if (!r.ok) throw new Error(`jobs ${r.status}`)
+  return r.json()
+}
+
 export async function generateReport(context: unknown, lang: string): Promise<string> {
   const r = await fetch(`${BASE}/report`, {
     method: 'POST',

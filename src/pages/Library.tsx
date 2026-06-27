@@ -1,5 +1,6 @@
 import { Box } from '../components/Box'
 import { css } from '../lib/css'
+import { VideoJobs } from '../components/VideoJobs'
 import type { PageProps } from './types'
 
 // Ported from prototype lines 242–339. vm = v.vm (engine.vm_library()).
@@ -8,6 +9,7 @@ export function Library({ e, v }: PageProps) {
   const vm = v.vm
   return (
     <div style={css('max-width:1320px;margin:0 auto')}>
+      <VideoJobs v={v} />
       <div style={css('display:grid;grid-template-columns:1.7fr 1fr;gap:14px;margin-bottom:16px')}>
         <div
           style={css(

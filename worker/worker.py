@@ -52,6 +52,22 @@ def _host():
     return API_BASE[:-4] if API_BASE.endswith("/api") else API_BASE
 
 
+def _jsonable(o):
+    # Convert numpy scalars/arrays to plain Python so json can serialize.
+    if isinstance(o, dict):
+        return {k: _jsonable(v) for k, v in o.items()}
+    if isinstance(o, (list, tuple)):
+        return [_jsonable(x) for x in o]
+    if hasattr(o, "tolist"):  # numpy array
+        return o.tolist()
+    if hasattr(o, "item"):    # numpy scalar
+        try:
+            return o.item()
+        except Exception:
+            return o
+    return o
+
+
 def get_model():
     global _model
     if _model is None:
@@ -149,7 +165,7 @@ def process_video(path: str, progress=None) -> dict:
                 track_ids.add(ti)
                 track_heat[ti][gy, gx] += 1
                 if len(track_pts[ti]) < 80:
-                    track_pts[ti].append([round(cx / max(1, W), 4), round(cy / max(1, H), 4)])
+                    track_pts[ti].append([round(float(cx) / max(1, W), 4), round(float(cy) / max(1, H), 4)])
                 if len(track_cols[ti]) < 25:
                     col = _jersey_lab(frame, xyxy)
                     if col is not None:
@@ -244,12 +260,12 @@ def process_video(path: str, progress=None) -> dict:
 
 def post_result(jid, result, status="done", error=""):
     httpx.post(f"{API_BASE}/worker/result/{jid}", headers=_headers(),
-               json={"status": status, "result": result, "error": error}, timeout=120)
+               json={"status": status, "result": _jsonable(result), "error": error}, timeout=120)
 
 
 def create_job(name, result):
     r = httpx.post(f"{API_BASE}/worker/job", headers=_headers(),
-                   json={"name": name, "status": "done", "result": result}, timeout=120)
+                   json={"name": name, "status": "done", "result": _jsonable(result)}, timeout=120)
     r.raise_for_status()
     return r.json().get("id")
 

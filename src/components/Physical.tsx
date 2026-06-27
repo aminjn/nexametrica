@@ -44,6 +44,16 @@ export function Physical({ v, job }: { v: Record<string, any>; job: any }) {
         )}
       </div>
 
+      {/* visual proof: pitch model reprojected onto a real frame */}
+      {fr.calibration_check ? (
+        <div style={css('margin-bottom:14px')}>
+          <div style={css('font-size:11px;font-weight:700;color:var(--sub);margin-bottom:6px')}>
+            {L('صحت‌سنجیِ کالیبراسیون (خطوطِ سبز باید روی خطوطِ زمین بیفتند)', 'Calibration check (green lines should sit on the real pitch lines)')}
+          </div>
+          <img src={fr.calibration_check} alt="" style={{ width: '100%', maxWidth: 560, borderRadius: 8, display: 'block', border: '1px solid var(--bd)' }} />
+        </div>
+      ) : null}
+
       {/* per-team rollup */}
       {phys.teams?.length ? (
         <div style={css('display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px')}>

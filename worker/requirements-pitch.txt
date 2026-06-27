@@ -1,8 +1,8 @@
-# Automatic per-frame pitch calibration (optional). Installed best-effort by
-# setup-worker.sh; if it fails (deps/network), the worker still runs with the
-# manual 4-corner calibration. Set PITCH=0 in .env to disable entirely.
+# NOTE: the Z440 worker does NOT need anything here. Auto per-frame calibration
+# runs on the LOCAL .pt via ultralytics (already in requirements.txt) — fully
+# offline, no Roboflow, no key.
 #
-# `inference` pulls a newer supervision than the core pin — that is expected;
-# install it in the SAME venv last so its resolution wins for the pitch model.
+# This file is only for get_pitch_model.py --roboflow, which you run ONCE on a
+# machine that has internet to fetch the model weights. Skip it entirely if you
+# obtain the .pt another way (--url / --file).
 inference>=0.21.0
-sports @ git+https://github.com/roboflow/sports.git

@@ -144,6 +144,7 @@ def process_video(path: str, progress=None) -> dict:
     pitch_ok = False
     cur_H = None
     pitch_len = pitch_wid = None
+    calib_check = None          # one frame with the pitch reprojected, for visual proof
     track_xy_m = defaultdict(list)   # track -> [(t_sec, x_m, y_m)] in real pitch metres
     pheat = np.zeros((PGRID_H, PGRID_W), dtype=np.int64)
     pheat_t = [np.zeros((PGRID_H, PGRID_W), dtype=np.int64),
@@ -171,6 +172,11 @@ def process_video(path: str, progress=None) -> dict:
                 hh = pitch_mod.homography(frame)
                 if hh is not None:
                     cur_H, pitch_len, pitch_wid = hh
+                    if calib_check is None:
+                        try:
+                            calib_check = pitch_mod.draw_overlay(frame, cur_H)
+                        except Exception:
+                            pass
             except Exception:
                 pass
         res = m.predict(
@@ -333,6 +339,13 @@ def process_video(path: str, progress=None) -> dict:
         keyframes = []
     keyframe = keyframes[0] if keyframes else None  # best single (back-compat)
 
+    calibration_check = None
+    if calib_check is not None:
+        try:
+            calibration_check = _encode_kf(calib_check)
+        except Exception:
+            calibration_check = None
+
     return {
         "video": {"width": W, "height": H, "fps": round(float(fps), 2),
                   "frames_total": total, "duration_sec": round(dur, 1)},
@@ -352,6 +365,7 @@ def process_video(path: str, progress=None) -> dict:
         "keyframe": keyframe,
         "keyframes": keyframes,
         "calibration_auto": bool(pitch_ok and physical),
+        "calibration_check": calibration_check,
         "pitch_heatmap": pitch_heat,
         "pitch_heatmap_a": pitch_heat_a,
         "pitch_heatmap_b": pitch_heat_b,

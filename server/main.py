@@ -303,7 +303,7 @@ def _light(j: dict) -> dict:
     out = {k: v for k, v in j.items() if k != "video_path"}
     res = j.get("result") or {}
     if res:
-        _heavy = ("keyframe", "keyframes", "points",
+        _heavy = ("keyframe", "keyframes", "points", "calibration_check",
                   "pitch_heatmap", "pitch_heatmap_a", "pitch_heatmap_b")
         lr = {k: v for k, v in res.items() if k not in _heavy}
         if isinstance(lr.get("ball"), dict):

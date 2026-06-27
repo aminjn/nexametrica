@@ -23,11 +23,8 @@ echo "▶ نصب PyTorch با CUDA 12.1 (مناسب RTX 3070)…"
 
 echo "▶ نصب کتابخانه‌های بینایی ماشین (ultralytics/supervision/opencv)…"
 .venv/bin/pip install -r requirements.txt
-
-echo "▶ نصبِ کالیبراسیونِ خودکارِ زمین (اختیاری: inference + roboflow/sports)…"
-# اگر این نصب نشد (شبکه/وابستگی)، ورکر همچنان با کالیبراسیونِ دستی کار می‌کند.
-.venv/bin/pip install -r requirements-pitch.txt || \
-  echo "⚠ نصبِ pitch ناموفق بود — با PITCH=0 ادامه بده یا بعداً دستی نصب کن."
+# توجه: کالیبراسیونِ خودکارِ زمین به چیزِ اضافه‌ای روی Z440 نیاز ندارد —
+# با همین ultralytics و یک فایلِ مدلِ محلی (PITCH_MODEL_PATH) کاملاً آفلاین کار می‌کند.
 
 [ -f .env ] || cp .env.example .env
 

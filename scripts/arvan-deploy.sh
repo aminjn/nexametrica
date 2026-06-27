@@ -38,5 +38,11 @@ rm -f /etc/nginx/sites-enabled/default
 nginx -t
 systemctl reload nginx
 
+# اگر سرویسِ API نصب است، آن را هم ری‌استارت کن تا تغییراتِ بک‌اند اعمال شود
+if systemctl list-unit-files | grep -q '^nexametrica-api\.service'; then
+  echo "▶ ری‌استارتِ API بک‌اند…"
+  systemctl restart nexametrica-api || true
+fi
+
 echo "✅ انجام شد. آدرس: http://<IP-سرور>/  (یا دامنه‌ای که در کانفیگ گذاشتی)"
 echo "   برای HTTPS رایگان:  apt-get install -y certbot python3-certbot-nginx && certbot --nginx -d دامنه‌ات"

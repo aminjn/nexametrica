@@ -10,13 +10,15 @@ import os
 import time
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Header, Depends
+from fastapi import FastAPI, HTTPException, Header, Depends, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 import llm
 import store
 import catalog
+import jobs as jobstore
 
 app = FastAPI(title="Nexa Metrica API", version="0.2.0")
 
@@ -35,6 +37,15 @@ def require_admin(x_admin_token: str = Header(default="")):
     # Admin auth intentionally DISABLED for now (the project will be secured
     # later). Left as a dependency so it can be re-enabled in one place.
     return
+
+
+WORKER_TOKEN = os.getenv("WORKER_TOKEN", "")
+
+
+def require_worker(x_worker_token: str = Header(default="")):
+    # Optional shared secret for the GPU worker (set WORKER_TOKEN to enable).
+    if WORKER_TOKEN and x_worker_token != WORKER_TOKEN:
+        raise HTTPException(status_code=401, detail="invalid worker token")
 
 
 # ---------------- models ----------------
@@ -264,8 +275,79 @@ def load_agent(agent_id: str, ts: int = 0):
             llm.chat(cfg, [{"role": "user", "content": "ok"}], max_tokens=5)
         except Exception as e:
             return {"ok": False, "detail": str(e)}
-    # self/cpu: actual GPU load happens on the Z400 worker later; record the request.
+    # self/cpu: actual GPU load happens on the Z440 worker later; record the request.
     asg["loaded_at"] = ts or int(time.time())
     agents[agent_id] = asg
     store.save_settings({"agents": agents})
     return {"ok": True, "loaded_at": asg["loaded_at"]}
+
+
+# ---------------- CV pipeline: videos + jobs + worker ----------------
+@app.post("/api/videos")
+async def upload_video(file: UploadFile = File(...)):
+    os.makedirs(jobstore.VIDEOS, exist_ok=True)
+    job = jobstore.add(file.filename or "video", source="upload")
+    dest = os.path.join(jobstore.VIDEOS, f"{job['id']}_{file.filename or 'video'}")
+    with open(dest, "wb") as f:
+        while True:
+            chunk = await file.read(1024 * 1024)
+            if not chunk:
+                break
+            f.write(chunk)
+    return jobstore.update(job["id"], video_path=dest)
+
+
+@app.get("/api/jobs")
+def list_jobs():
+    # strip server-side paths from the public listing
+    return {
+        "jobs": [
+            {k: v for k, v in j.items() if k != "video_path"} for j in jobstore.all_jobs()
+        ]
+    }
+
+
+@app.get("/api/jobs/{jid}")
+def get_job(jid: str):
+    j = jobstore.get(jid)
+    if not j:
+        raise HTTPException(status_code=404, detail="job not found")
+    return {k: v for k, v in j.items() if k != "video_path"}
+
+
+@app.get("/api/worker/next", dependencies=[Depends(require_worker)])
+def worker_next():
+    j = jobstore.claim_next()
+    if not j:
+        return {"job": None}
+    return {"job": {"id": j["id"], "name": j["name"], "video_url": f"/api/videos/{j['id']}/file"}}
+
+
+@app.get("/api/videos/{jid}/file", dependencies=[Depends(require_worker)])
+def video_file(jid: str):
+    j = jobstore.get(jid)
+    if not j or not j.get("video_path") or not os.path.exists(j["video_path"]):
+        raise HTTPException(status_code=404, detail="file not found")
+    return FileResponse(j["video_path"])
+
+
+@app.post("/api/worker/result/{jid}", dependencies=[Depends(require_worker)])
+def worker_result(jid: str, body: dict):
+    if not jobstore.get(jid):
+        raise HTTPException(status_code=404, detail="job not found")
+    jobstore.update(
+        jid,
+        status=body.get("status", "done"),
+        result=body.get("result"),
+        error=body.get("error", ""),
+        finished=int(time.time()),
+    )
+    return {"ok": True}
+
+
+@app.post("/api/worker/job", dependencies=[Depends(require_worker)])
+def worker_create_job(body: dict):
+    # The worker processed a LOCAL file and reports a finished job directly.
+    job = jobstore.add(body.get("name", "local video"), source="worker")
+    jobstore.update(job["id"], status=body.get("status", "done"), result=body.get("result"))
+    return {"id": job["id"]}

@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# نصب workerِ بینایی ماشین روی Z440 (Ubuntu + NVIDIA driver نصب‌شده).
+# پیش‌نیاز: درایور انویدیا نصب باشد (تستِ سریع: nvidia-smi).
+#
+#   cd ~/nexametrica/worker && bash setup-worker.sh
+set -euo pipefail
+cd "$(dirname "$0")"
+
+echo "▶ پیش‌نیازها…"
+sudo apt-get update -y
+sudo apt-get install -y python3 python3-venv python3-pip ffmpeg
+
+python3 -m venv .venv
+.venv/bin/pip install --upgrade pip -q
+
+echo "▶ نصب PyTorch با CUDA 12.1 (مناسب RTX 3070)…"
+# اگر CUDA در دسترس نشد، نسخه‌ی cu118 را امتحان کن:
+#   .venv/bin/pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+.venv/bin/pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+
+echo "▶ نصب کتابخانه‌های بینایی ماشین (ultralytics/supervision/opencv)…"
+.venv/bin/pip install -r requirements.txt
+
+[ -f .env ] || cp .env.example .env
+
+echo "▶ تست GPU:"
+.venv/bin/python - <<'PY'
+import torch
+print("torch:", torch.__version__)
+print("CUDA available:", torch.cuda.is_available())
+if torch.cuda.is_available():
+    print("GPU:", torch.cuda.get_device_name(0))
+PY
+
+echo
+echo "=================================================================="
+echo "✅ نصب شد."
+echo "۱) فایل worker/.env را تنظیم کن (مخصوصاً API_BASE)."
+echo "۲) تستِ یک ویدیوی محلی:"
+echo "     .venv/bin/python worker.py process /path/to/match.mp4"
+echo "۳) حالتِ سرویس (پردازشِ صفِ آپلودها از سایت):"
+echo "     .venv/bin/python worker.py serve"
+echo "   (برای اجرای دائمی، از systemd استفاده کن — راهنما در worker/README.md)"
+echo "=================================================================="

@@ -328,6 +328,13 @@ def get_job(jid: str):
     return {k: v for k, v in j.items() if k != "video_path"}
 
 
+@app.delete("/api/jobs/{jid}")
+def delete_job(jid: str):
+    if not jobstore.delete(jid):
+        raise HTTPException(status_code=404, detail="job not found")
+    return {"ok": True}
+
+
 @app.post("/api/jobs/{jid}/calibration")
 def save_calibration(jid: str, body: dict):
     if not jobstore.get(jid):

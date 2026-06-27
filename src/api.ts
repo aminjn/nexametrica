@@ -51,6 +51,12 @@ export async function getJob(id: string): Promise<Job> {
   return r.json()
 }
 
+export async function deleteJob(id: string): Promise<{ ok: boolean }> {
+  const r = await fetch(`${BASE}/jobs/${id}`, { method: 'DELETE' })
+  if (!r.ok) throw new Error(`delete ${r.status}`)
+  return r.json()
+}
+
 export async function saveCalibration(jobId: string, corners: number[][]): Promise<{ ok: boolean }> {
   const r = await fetch(`${BASE}/jobs/${jobId}/calibration`, {
     method: 'POST',

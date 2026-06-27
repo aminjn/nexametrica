@@ -69,6 +69,23 @@ def update(jid: str, **patch) -> dict | None:
         return found
 
 
+def delete(jid: str) -> bool:
+    """Remove a job and its uploaded video file. Returns True if it existed."""
+    with _lock:
+        j = _read()
+        victim = next((x for x in j if x["id"] == jid), None)
+        if not victim:
+            return False
+        vp = victim.get("video_path")
+        if vp:
+            try:
+                os.remove(vp if os.path.isabs(vp) else os.path.join(DATA, vp))
+            except Exception:
+                pass
+        _write([x for x in j if x["id"] != jid])
+        return True
+
+
 def claim_next() -> dict | None:
     with _lock:
         j = _read()

@@ -145,6 +145,7 @@ def process_video(path: str, progress=None) -> dict:
     cur_H = None
     pitch_len = pitch_wid = None
     calib_check = None          # one frame with the pitch reprojected, for visual proof
+    pitch_attempts = pitch_hits = 0
     track_xy_m = defaultdict(list)   # track -> [(t_sec, x_m, y_m)] in real pitch metres
     pheat = np.zeros((PGRID_H, PGRID_W), dtype=np.int64)
     pheat_t = [np.zeros((PGRID_H, PGRID_W), dtype=np.int64),
@@ -168,17 +169,20 @@ def process_video(path: str, progress=None) -> dict:
             break
         t_sec = idx / fps if fps else 0.0
         if pitch_ok and frames % PITCH_EVERY == 0:
+            pitch_attempts += 1
             try:
                 hh = pitch_mod.homography(frame)
                 if hh is not None:
                     cur_H, pitch_len, pitch_wid = hh
+                    pitch_hits += 1
                     if calib_check is None:
                         try:
                             calib_check = pitch_mod.draw_overlay(frame, cur_H)
                         except Exception:
                             pass
-            except Exception:
-                pass
+            except Exception as e:
+                if pitch_attempts <= 1:
+                    print("pitch homography error:", e, flush=True)
         res = m.predict(
             frame, classes=[PERSON, BALL], conf=CONF, imgsz=IMGSZ,
             device=DEVICE, verbose=False,
@@ -248,6 +252,9 @@ def process_video(path: str, progress=None) -> dict:
 
     cap.release()
     dur = (total / fps) if total else 0
+    if PITCH:
+        print(f"pitch calibration: {pitch_hits}/{pitch_attempts} frames calibrated, "
+              f"{len(track_xy_m)} tracks with real positions", flush=True)
 
     # ---- team separation by jersey colour (KMeans on per-track median Lab) ----
     teams = None

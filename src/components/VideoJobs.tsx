@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { css } from '../lib/css'
 import { Box } from './Box'
-import { uploadVideo, listJobs, type Job } from '../api'
+import { uploadVideo, listJobs, deleteJob, type Job } from '../api'
 import { eng } from '../engine'
 import { Heatmap } from './Heatmap'
 import { Calibration } from './Calibration'
@@ -44,6 +44,18 @@ export function VideoJobs({ v }: { v: Record<string, any> }) {
     return () => clearInterval(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  async function onDelete(e: React.MouseEvent, j: Job) {
+    e.stopPropagation()
+    if (!window.confirm(L(`«${j.name}» حذف شود؟`, `Delete "${j.name}"?`))) return
+    setJobs((js) => js.filter((x) => x.id !== j.id))   // optimistic
+    if (open === j.id) setOpen(null)
+    try {
+      await deleteJob(j.id)
+    } catch {
+      refresh()   // revert on failure
+    }
+  }
 
   async function onPick(e: ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]
@@ -150,6 +162,17 @@ export function VideoJobs({ v }: { v: Record<string, any> }) {
                   >
                     {fa ? st.fa : st.en}
                   </span>
+                  <Box
+                    onClick={(e: React.MouseEvent) => onDelete(e, j)}
+                    css="width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--mut);cursor:pointer;flex-shrink:0"
+                    hover="background:var(--dngd);color:var(--dng)"
+                    title={L('حذف ویدیو', 'Delete video')}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                      <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                      <path d="M10 11v6M14 11v6" />
+                    </svg>
+                  </Box>
                 </Box>
                 {expanded && r ? (
                   <div style={css('padding:0 14px 16px;border-top:1px solid var(--bd)')}>

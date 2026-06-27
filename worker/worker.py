@@ -37,7 +37,7 @@ SAMPLE = int(_env("SAMPLE", "3"))      # process every Nth frame
 IMGSZ = int(_env("IMGSZ", "1280"))
 DEVICE = _env("DEVICE", "0")           # "0" for GPU, "cpu" otherwise
 GRID_W, GRID_H = 32, 20
-PITCH = _env("PITCH", "1") not in ("0", "false", "no", "")  # auto per-frame calibration
+PITCH = _env("PITCH", "0") not in ("0", "false", "no", "")  # auto per-frame calibration (opt-in)
 PITCH_EVERY = int(_env("PITCH_EVERY", "2"))   # run pitch model every Nth processed frame
 PGRID_W, PGRID_H = 52, 34               # pitch-space heatmap (~2 m cells over 105x68)
 

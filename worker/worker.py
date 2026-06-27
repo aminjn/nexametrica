@@ -130,6 +130,7 @@ def process_video(path: str, progress=None) -> dict:
     ball_pts, track_ids, players_per = [], set(), []
     ball_count, frames, idx = 0, 0, -1
     keyframe_img = None
+    keyframe_score = -1.0       # pick the widest "tactical" frame, not the middle one
     m = get_model()
 
     while True:
@@ -141,8 +142,6 @@ def process_video(path: str, progress=None) -> dict:
         ok, frame = cap.retrieve()
         if not ok:
             break
-        if keyframe_img is None and (idx >= (total // 2 if total else 30)):
-            keyframe_img = frame.copy()
         res = m.predict(
             frame, classes=[PERSON, BALL], conf=CONF, imgsz=IMGSZ,
             device=DEVICE, verbose=False,
@@ -153,10 +152,14 @@ def process_video(path: str, progress=None) -> dict:
 
         tracked = tracker.update_with_detections(players)
         n = 0
+        nx_list, ny_list, bh_list = [], [], []
         for xyxy, tid in zip(tracked.xyxy, tracked.tracker_id):
             n += 1
             cx = (xyxy[0] + xyxy[2]) / 2.0
             cy = (xyxy[1] + xyxy[3]) / 2.0
+            nx_list.append(cx / max(1, W))
+            ny_list.append(cy / max(1, H))
+            bh_list.append((xyxy[3] - xyxy[1]) / max(1, H))
             gx = min(GRID_W - 1, max(0, int(cx / max(1, W) * GRID_W)))
             gy = min(GRID_H - 1, max(0, int(cy / max(1, H) * GRID_H)))
             heat[gy, gx] += 1
@@ -171,6 +174,21 @@ def process_video(path: str, progress=None) -> dict:
                     if col is not None:
                         track_cols[ti].append(col)
         players_per.append(n)
+
+        # Score this frame as a calibration keyframe candidate. A wide tactical
+        # pitch view has MANY players, SPREAD across the frame, with SMALL boxes
+        # (players are far away). VAR replays / closeups have few, large, clustered
+        # boxes — so they score low and won't be chosen.
+        if n >= 6:
+            spread = float(np.std(nx_list) + np.std(ny_list))
+            med_bh = float(np.median(bh_list)) or 1e-3
+            score = n * spread / med_bh
+            if score > keyframe_score:
+                keyframe_score = score
+                keyframe_img = frame.copy()
+        elif keyframe_score < 0 and keyframe_img is None:
+            # fallback for tiny/odd clips that never reach 6 players
+            keyframe_img = frame.copy()
 
         for xyxy in balls.xyxy:
             ball_count += 1

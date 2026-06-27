@@ -41,10 +41,12 @@ MIN_POINTS = 5           # need >=5 good landmarks for a trustworthy homography
 MAX_REPROJ_ERR = 18.0    # px; above this the calibration is rejected for the frame
 
 _model = None
+_backend = None          # "ultralytics" (local .pt) | "roboflow" (inference)
+_world = PITCH_VERTICES   # world landmarks matching the loaded model's keypoint order
 
 
 def available():
-    """True if a local pitch model is configured and loads."""
+    """True if a pitch model (local .pt OR Roboflow) is configured and loads."""
     try:
         load()
         return True
@@ -54,17 +56,37 @@ def available():
 
 
 def load():
-    global _model
+    """Two interchangeable backends, both run LOCALLY on the GPU at inference time:
+      1) PITCH_MODEL_PATH -> a local YOLO-pose .pt via ultralytics (fully offline).
+      2) else Roboflow `inference` (downloads weights once, then runs offline);
+         needs ROBOFLOW_API_KEY. Uses sports' SoccerPitchConfiguration so the
+         keypoint order is guaranteed to match.
+    """
+    global _model, _backend, _world
     if _model is not None:
         return _model
     path = os.getenv("PITCH_MODEL_PATH", "").strip()
-    if not path:
-        raise RuntimeError("PITCH_MODEL_PATH not set (need a local pitch-keypoint .pt)")
-    if not os.path.exists(path):
-        raise RuntimeError(f"pitch model not found: {path}")
-    from ultralytics import YOLO
-    _model = YOLO(path)
-    print(f"pitch model loaded: {path}", flush=True)
+    if path:
+        if not os.path.exists(path):
+            raise RuntimeError(f"pitch model not found: {path}")
+        from ultralytics import YOLO
+        _model = YOLO(path)
+        _backend = "ultralytics"
+        _world = PITCH_VERTICES
+        print(f"pitch model (local): {path}", flush=True)
+        return _model
+    # Roboflow backend
+    from inference import get_model
+    mid = os.getenv("PITCH_MODEL_ID", "football-field-detection-v2/15")
+    key = os.getenv("ROBOFLOW_API_KEY", "") or None
+    _model = get_model(model_id=mid, api_key=key)
+    _backend = "roboflow"
+    try:
+        from sports.configs.soccer import SoccerPitchConfiguration
+        _world = [tuple(map(float, v)) for v in SoccerPitchConfiguration().vertices]
+    except Exception:
+        _world = PITCH_VERTICES
+    print(f"pitch model (roboflow): {mid}", flush=True)
     return _model
 
 
@@ -106,21 +128,30 @@ def homography(frame, min_conf=MIN_CONF):
     """
     import numpy as np
     model = load()
-    res = model.predict(frame, verbose=False)[0]
-    kp = getattr(res, "keypoints", None)
-    if kp is None or kp.xy is None or len(kp.xy) == 0:
-        return None
-    xy = kp.xy[0].cpu().numpy() if hasattr(kp.xy[0], "cpu") else np.asarray(kp.xy[0])
-    if kp.conf is not None:
-        conf = kp.conf[0].cpu().numpy() if hasattr(kp.conf[0], "cpu") else np.asarray(kp.conf[0])
+    if _backend == "roboflow":
+        import supervision as sv
+        result = model.infer(frame, confidence=0.3)[0]
+        kp = sv.KeyPoints.from_inference(result)
+        if kp.xy is None or len(kp.xy) == 0:
+            return None
+        xy = np.asarray(kp.xy[0])
+        conf = np.asarray(kp.confidence[0]) if kp.confidence is not None else np.ones(len(xy))
     else:
-        conf = np.ones(len(xy))
-    n = min(len(xy), len(PITCH_VERTICES))
+        res = model.predict(frame, verbose=False)[0]
+        kp = getattr(res, "keypoints", None)
+        if kp is None or kp.xy is None or len(kp.xy) == 0:
+            return None
+        xy = kp.xy[0].cpu().numpy() if hasattr(kp.xy[0], "cpu") else np.asarray(kp.xy[0])
+        if kp.conf is not None:
+            conf = kp.conf[0].cpu().numpy() if hasattr(kp.conf[0], "cpu") else np.asarray(kp.conf[0])
+        else:
+            conf = np.ones(len(xy))
+    n = min(len(xy), len(_world))
     img_pts, world_pts = [], []
     for i in range(n):
         if conf[i] >= min_conf and (xy[i][0] > 0 or xy[i][1] > 0):
             img_pts.append(xy[i])
-            world_pts.append(PITCH_VERTICES[i])
+            world_pts.append(_world[i])
     H = solve_homography(img_pts, world_pts)
     if H is None:
         return None

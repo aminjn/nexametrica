@@ -33,6 +33,10 @@ export function Calibration({ v, job }: { v: Record<string, any>; job: any }) {
   const r = full.result || {}
   const points: number[][] = r.points || []
   const teams = r.teams
+  // candidate keyframes from different moments; operator picks a clean wide one
+  const frames: string[] = (r.keyframes && r.keyframes.length ? r.keyframes : r.keyframe ? [r.keyframe] : []) as string[]
+  const [sel, setSel] = useState(0)
+  const activeFrame: string | undefined = frames[Math.min(sel, Math.max(0, frames.length - 1))] || r.keyframe
 
   const [corners, setCorners] = useState<Pt[]>(
     (job.calibration as Pt[]) || DEFAULT,
@@ -110,6 +114,29 @@ export function Calibration({ v, job }: { v: Record<string, any>; job: any }) {
           'Drag the 4 handles to the pitch corners — 1: top-left, 2: top-right, 3: bottom-right, 4: bottom-left. The top-down heatmap updates live.',
         )}
       </div>
+      {frames.length > 1 ? (
+        <div style={css('margin-bottom:12px')}>
+          <div style={css('font-size:11px;font-weight:700;color:var(--sub);margin-bottom:6px')}>
+            {L('یک فریمِ نمای‌باز انتخاب کن (از صحنه‌ی تکرار/VAR/کلوزآپ پرهیز کن):', 'Pick a clean wide frame (avoid replays / VAR / closeups):')}
+          </div>
+          <div style={css('display:flex;gap:8px;flex-wrap:wrap')}>
+            {frames.map((f, i) => (
+              <button
+                key={i}
+                onClick={() => setSel(i)}
+                style={{
+                  ...css('padding:0;border-radius:7px;overflow:hidden;cursor:pointer;background:#000;width:108px;line-height:0'),
+                  border: i === sel ? '2px solid var(--ac)' : '2px solid var(--bd2)',
+                  boxShadow: i === sel ? '0 0 0 2px rgba(163,230,53,.25)' : 'none',
+                }}
+                title={L(`فریم ${i + 1}`, `frame ${i + 1}`)}
+              >
+                <img src={f} alt="" draggable={false} style={{ width: '100%', display: 'block' }} />
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
       <div style={css('display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start')}>
         {/* keyframe + draggable corners */}
         <div
@@ -118,8 +145,8 @@ export function Calibration({ v, job }: { v: Record<string, any>; job: any }) {
           onPointerUp={up}
           style={css('position:relative;width:100%;border-radius:8px;overflow:hidden;touch-action:none;user-select:none;background:#000')}
         >
-          {r.keyframe ? (
-            <img src={r.keyframe} alt="" draggable={false} style={{ width: '100%', display: 'block' }} />
+          {activeFrame ? (
+            <img src={activeFrame} alt="" draggable={false} style={{ width: '100%', display: 'block' }} />
           ) : (
             <div style={css('aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:12px')}>
               {L('فریمی موجود نیست', 'no keyframe')}

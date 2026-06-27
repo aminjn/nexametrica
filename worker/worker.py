@@ -129,8 +129,12 @@ def process_video(path: str, progress=None) -> dict:
     track_pts = defaultdict(list)      # per-track normalized image points (for calibration)
     ball_pts, track_ids, players_per = [], set(), []
     ball_count, frames, idx = 0, 0, -1
-    keyframe_img = None
-    keyframe_score = -1.0       # pick the widest "tactical" frame, not the middle one
+    # Keep the best "wide tactical" frame per time-segment, so the UI can offer
+    # several clean candidates from different moments (not one auto-pick that may
+    # land on a VAR replay / closeup).
+    KF_SEGMENTS = 6
+    seg_best = {}               # seg -> (score, frame_copy)
+    fallback_img = None
     m = get_model()
 
     while True:
@@ -183,12 +187,14 @@ def process_video(path: str, progress=None) -> dict:
             spread = float(np.std(nx_list) + np.std(ny_list))
             med_bh = float(np.median(bh_list)) or 1e-3
             score = n * spread / med_bh
-            if score > keyframe_score:
-                keyframe_score = score
-                keyframe_img = frame.copy()
-        elif keyframe_score < 0 and keyframe_img is None:
-            # fallback for tiny/odd clips that never reach 6 players
-            keyframe_img = frame.copy()
+            if total > 0:
+                seg = min(KF_SEGMENTS - 1, int(idx / total * KF_SEGMENTS))
+            else:
+                seg = (frames // 60) % KF_SEGMENTS
+            if seg not in seg_best or score > seg_best[seg][0]:
+                seg_best[seg] = (score, frame.copy())
+        elif fallback_img is None:
+            fallback_img = frame.copy()  # tiny/odd clips that never reach 6 players
 
         for xyxy in balls.xyxy:
             ball_count += 1
@@ -242,18 +248,31 @@ def process_video(path: str, progress=None) -> dict:
         step = max(1, len(points) // 6000)
         points = points[::step][:6000]
 
-    keyframe = None
+    def _encode_kf(img):
+        import base64
+        h0, w0 = img.shape[:2]
+        sc = 480.0 / max(1, w0)
+        small = cv2.resize(img, (int(w0 * sc), int(h0 * sc)))
+        okj, buf = cv2.imencode(".jpg", small, [int(cv2.IMWRITE_JPEG_QUALITY), 65])
+        if not okj:
+            return None
+        return "data:image/jpeg;base64," + base64.b64encode(buf.tobytes()).decode()
+
+    # candidate keyframes: best wide-view frame per time segment, time-ordered,
+    # so the operator can pick a clean one (and skip any VAR/closeup that slips in).
+    keyframes = []
     try:
-        if keyframe_img is not None:
-            import base64
-            h0, w0 = keyframe_img.shape[:2]
-            sc = 480.0 / max(1, w0)
-            small = cv2.resize(keyframe_img, (int(w0 * sc), int(h0 * sc)))
-            okj, buf = cv2.imencode(".jpg", small, [int(cv2.IMWRITE_JPEG_QUALITY), 60])
-            if okj:
-                keyframe = "data:image/jpeg;base64," + base64.b64encode(buf.tobytes()).decode()
+        for seg in sorted(seg_best):
+            url = _encode_kf(seg_best[seg][1])
+            if url:
+                keyframes.append(url)
+        if not keyframes and fallback_img is not None:
+            url = _encode_kf(fallback_img)
+            if url:
+                keyframes.append(url)
     except Exception:
-        keyframe = None
+        keyframes = []
+    keyframe = keyframes[0] if keyframes else None  # best single (back-compat)
 
     return {
         "video": {"width": W, "height": H, "fps": round(float(fps), 2),
@@ -272,6 +291,7 @@ def process_video(path: str, progress=None) -> dict:
         "grid": {"w": GRID_W, "h": GRID_H},
         "points": points,
         "keyframe": keyframe,
+        "keyframes": keyframes,
         "model": MODEL,
     }
 

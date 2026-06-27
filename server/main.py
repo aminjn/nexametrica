@@ -303,7 +303,7 @@ def _light(j: dict) -> dict:
     out = {k: v for k, v in j.items() if k != "video_path"}
     res = j.get("result") or {}
     if res:
-        lr = {k: v for k, v in res.items() if k not in ("keyframe", "points")}
+        lr = {k: v for k, v in res.items() if k not in ("keyframe", "keyframes", "points")}
         if isinstance(lr.get("ball"), dict):
             b = dict(lr["ball"])
             b.pop("trajectory", None)

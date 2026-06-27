@@ -36,7 +36,7 @@ CONF = float(_env("CONF", "0.3"))
 SAMPLE = int(_env("SAMPLE", "3"))      # process every Nth frame
 IMGSZ = int(_env("IMGSZ", "1280"))
 DEVICE = _env("DEVICE", "0")           # "0" for GPU, "cpu" otherwise
-GRID_W, GRID_H = 16, 10
+GRID_W, GRID_H = 32, 20
 
 PERSON, BALL = 0, 32  # COCO class ids
 

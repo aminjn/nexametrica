@@ -14,36 +14,61 @@ const STATUS: Record<string, { fa: string; en: string; c: string }> = {
   failed: { fa: 'ناموفق', en: 'Failed', c: 'var(--dng)' },
 }
 
-function Heatmap({ grid, color }: { grid: number[][]; color?: string }) {
+function PitchLines({ W, H }: { W: number; H: number }) {
+  const s = 'rgba(255,255,255,.22)'
+  return (
+    <g fill="none" stroke={s} strokeWidth={1.2}>
+      <rect x={1} y={1} width={W - 2} height={H - 2} rx={4} />
+      <line x1={W / 2} y1={1} x2={W / 2} y2={H - 1} />
+      <circle cx={W / 2} cy={H / 2} r={H * 0.13} />
+      <rect x={1} y={H / 2 - H * 0.28} width={W * 0.14} height={H * 0.56} />
+      <rect x={W - 1 - W * 0.14} y={H / 2 - H * 0.28} width={W * 0.14} height={H * 0.56} />
+    </g>
+  )
+}
+
+function heatColor(v: number) {
+  // vivid ramp: blue → cyan → green → yellow → red
+  const hue = (1 - v) * 235
+  return `hsl(${hue}, 92%, 52%)`
+}
+
+function Heatmap({ grid }: { grid: number[][] }) {
   const rows = grid.length
   const cols = grid[0]?.length || 0
   let max = 1
   for (const r of grid) for (const c of r) if (c > max) max = c
-  const W = 320
+  const W = 360
   const H = Math.round((W / cols) * rows)
   const cw = W / cols
   const ch = H / rows
+  const blur = Math.max(3, cw * 0.7)
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block', borderRadius: 8, background: 'rgba(120,200,90,.05)' }}>
-      {grid.flatMap((row, r) =>
-        row.map((val, c) => {
-          if (val <= 0) return null
-          const v = val / max
-          const fill = color ?? (v < 0.4 ? `rgba(56,189,248,${0.25 + v})` : v < 0.7 ? `rgba(163,230,53,${0.25 + v})` : `rgba(245,158,11,${0.3 + v})`)
-          return (
-            <rect
-              key={`${r}-${c}`}
-              x={c * cw}
-              y={r * ch}
-              width={cw + 0.5}
-              height={ch + 0.5}
-              fill={fill}
-              fillOpacity={color ? 0.15 + v * 0.85 : 1}
-              style={{ filter: 'blur(5px)' }}
-            />
-          )
-        }),
-      )}
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      width="100%"
+      style={{ display: 'block', borderRadius: 8, background: 'rgba(40,110,55,.18)' }}
+    >
+      <g style={{ filter: `blur(${blur}px)` }}>
+        {grid.flatMap((row, r) =>
+          row.map((val, c) => {
+            if (val <= 0) return null
+            const v = Math.sqrt(val / max)
+            return (
+              <rect
+                key={`${r}-${c}`}
+                x={c * cw}
+                y={r * ch}
+                width={cw + 1}
+                height={ch + 1}
+                fill={heatColor(v)}
+                fillOpacity={0.25 + 0.75 * v}
+              />
+            )
+          }),
+        )}
+      </g>
+      <PitchLines W={W} H={H} />
     </svg>
   )
 }
@@ -223,12 +248,18 @@ export function VideoJobs({ v }: { v: Record<string, any> }) {
                         </div>
                         <div style={css('display:grid;grid-template-columns:1fr 1fr;gap:12px')}>
                           <div>
-                            <div style={css(`font-size:10.5px;font-weight:700;margin-bottom:5px;color:${r.teams[0].color}`)}>{L('تیم A', 'Team A')}</div>
-                            <Heatmap grid={r.heatmap_a} color={r.teams[0].color} />
+                            <div style={css('font-size:10.5px;font-weight:700;margin-bottom:5px;display:flex;align-items:center;gap:6px')}>
+                              <span style={css(`width:11px;height:11px;border-radius:3px;background:${r.teams[0].color};border:1px solid rgba(255,255,255,.25)`)}></span>
+                              {L('تیم A', 'Team A')}
+                            </div>
+                            <Heatmap grid={r.heatmap_a} />
                           </div>
                           <div>
-                            <div style={css(`font-size:10.5px;font-weight:700;margin-bottom:5px;color:${r.teams[1].color}`)}>{L('تیم B', 'Team B')}</div>
-                            <Heatmap grid={r.heatmap_b} color={r.teams[1].color} />
+                            <div style={css('font-size:10.5px;font-weight:700;margin-bottom:5px;display:flex;align-items:center;gap:6px')}>
+                              <span style={css(`width:11px;height:11px;border-radius:3px;background:${r.teams[1].color};border:1px solid rgba(255,255,255,.25)`)}></span>
+                              {L('تیم B', 'Team B')}
+                            </div>
+                            <Heatmap grid={r.heatmap_b} />
                           </div>
                         </div>
                       </div>

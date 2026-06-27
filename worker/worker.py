@@ -14,19 +14,28 @@ Config via env / worker/.env (see .env.example).
 """
 import json
 import os
+import re
 import sys
 import tempfile
 import time
 
 import httpx
 
-API_BASE = os.getenv("API_BASE", "https://mt.nexxaai.ir/api").rstrip("/")
-WORKER_TOKEN = os.getenv("WORKER_TOKEN", "")
-MODEL = os.getenv("MODEL", "yolo11m.pt")
-CONF = float(os.getenv("CONF", "0.3"))
-SAMPLE = int(os.getenv("SAMPLE", "3"))      # process every Nth frame
-IMGSZ = int(os.getenv("IMGSZ", "1280"))
-DEVICE = os.getenv("DEVICE", "0")           # "0" for GPU, "cpu" otherwise
+
+def _env(key: str, default: str) -> str:
+    # Tolerate inline comments (systemd EnvironmentFile keeps "0.3  # note").
+    v = os.getenv(key, default)
+    v = re.sub(r"\s+#.*$", "", v)
+    return v.strip()
+
+
+API_BASE = _env("API_BASE", "https://mt.nexxaai.ir/api").rstrip("/")
+WORKER_TOKEN = _env("WORKER_TOKEN", "")
+MODEL = _env("MODEL", "yolo11m.pt")
+CONF = float(_env("CONF", "0.3"))
+SAMPLE = int(_env("SAMPLE", "3"))      # process every Nth frame
+IMGSZ = int(_env("IMGSZ", "1280"))
+DEVICE = _env("DEVICE", "0")           # "0" for GPU, "cpu" otherwise
 GRID_W, GRID_H = 16, 10
 
 PERSON, BALL = 0, 32  # COCO class ids

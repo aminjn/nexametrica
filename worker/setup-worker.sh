@@ -10,7 +10,8 @@ echo "▶ پیش‌نیازها…"
 # توجه: ممکن است یک مخزنِ شخص‌ثالث (مثل NVIDIA CUDA) از ایران بلاک باشد و
 # apt-get update خطا بدهد؛ مهم نیست چون تورچ را با pip نصب می‌کنیم. پس ادامه بده.
 sudo apt-get update -y || true
-sudo apt-get install -y python3 python3-venv python3-pip ffmpeg
+# libgl1/libglib برای import cv2 روی سرورِ بدون‌نمایشگر لازم‌اند
+sudo apt-get install -y python3 python3-venv python3-pip ffmpeg libgl1 libglib2.0-0
 
 python3 -m venv .venv
 .venv/bin/pip install --upgrade pip -q

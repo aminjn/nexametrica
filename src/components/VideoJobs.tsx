@@ -6,71 +6,14 @@ import { css } from '../lib/css'
 import { Box } from './Box'
 import { uploadVideo, listJobs, type Job } from '../api'
 import { eng } from '../engine'
+import { Heatmap } from './Heatmap'
+import { Calibration } from './Calibration'
 
 const STATUS: Record<string, { fa: string; en: string; c: string }> = {
   queued: { fa: 'در صف', en: 'Queued', c: 'var(--warn)' },
   processing: { fa: 'در حال پردازش', en: 'Processing', c: 'var(--ai)' },
   done: { fa: 'آماده', en: 'Done', c: 'var(--good)' },
   failed: { fa: 'ناموفق', en: 'Failed', c: 'var(--dng)' },
-}
-
-function PitchLines({ W, H }: { W: number; H: number }) {
-  const s = 'rgba(255,255,255,.22)'
-  return (
-    <g fill="none" stroke={s} strokeWidth={1.2}>
-      <rect x={1} y={1} width={W - 2} height={H - 2} rx={4} />
-      <line x1={W / 2} y1={1} x2={W / 2} y2={H - 1} />
-      <circle cx={W / 2} cy={H / 2} r={H * 0.13} />
-      <rect x={1} y={H / 2 - H * 0.28} width={W * 0.14} height={H * 0.56} />
-      <rect x={W - 1 - W * 0.14} y={H / 2 - H * 0.28} width={W * 0.14} height={H * 0.56} />
-    </g>
-  )
-}
-
-function heatColor(v: number) {
-  // vivid ramp: blue → cyan → green → yellow → red
-  const hue = (1 - v) * 235
-  return `hsl(${hue}, 92%, 52%)`
-}
-
-function Heatmap({ grid }: { grid: number[][] }) {
-  const rows = grid.length
-  const cols = grid[0]?.length || 0
-  let max = 1
-  for (const r of grid) for (const c of r) if (c > max) max = c
-  const W = 360
-  const H = Math.round((W / cols) * rows)
-  const cw = W / cols
-  const ch = H / rows
-  const blur = Math.max(3, cw * 0.7)
-  return (
-    <svg
-      viewBox={`0 0 ${W} ${H}`}
-      width="100%"
-      style={{ display: 'block', borderRadius: 8, background: 'rgba(40,110,55,.18)' }}
-    >
-      <g style={{ filter: `blur(${blur}px)` }}>
-        {grid.flatMap((row, r) =>
-          row.map((val, c) => {
-            if (val <= 0) return null
-            const v = Math.sqrt(val / max)
-            return (
-              <rect
-                key={`${r}-${c}`}
-                x={c * cw}
-                y={r * ch}
-                width={cw + 1}
-                height={ch + 1}
-                fill={heatColor(v)}
-                fillOpacity={0.25 + 0.75 * v}
-              />
-            )
-          }),
-        )}
-      </g>
-      <PitchLines W={W} H={H} />
-    </svg>
-  )
 }
 
 export function VideoJobs({ v }: { v: Record<string, any> }) {
@@ -80,6 +23,7 @@ export function VideoJobs({ v }: { v: Record<string, any> }) {
 
   const [jobs, setJobs] = useState<Job[]>([])
   const [open, setOpen] = useState<string | null>(null)
+  const [calib, setCalib] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -275,6 +219,23 @@ export function VideoJobs({ v }: { v: Record<string, any> }) {
                       <div style={css('font-size:10.5px;color:var(--mut);margin-top:10px')}>
                         {faN(r.video.width)}×{faN(r.video.height)} · {faN(r.video.fps)}fps ·{' '}
                         {faN(r.processed_frames)} {L('فریمِ پردازش‌شده', 'frames processed')} · {r.model}
+                      </div>
+                    ) : null}
+                    {(j as any).calibratable ? (
+                      <div style={css('margin-top:12px')}>
+                        <button
+                          onClick={() => setCalib(calib === j.id ? null : j.id)}
+                          style={css(
+                            'height:34px;padding:0 15px;background:var(--card2);border:1px solid var(--bd2);border-radius:9px;color:var(--ac);font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:7px',
+                          )}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                            <rect x="3" y="3" width="18" height="18" rx="2" />
+                            <path d="M3 9h18M9 3v18" />
+                          </svg>
+                          {calib === j.id ? L('بستن کالیبراسیون', 'Close calibration') : L('کالیبراسیون زمین', 'Field calibration')}
+                        </button>
+                        {calib === j.id ? <Calibration v={v} job={j} /> : null}
                       </div>
                     ) : null}
                   </div>

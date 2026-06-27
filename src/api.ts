@@ -45,6 +45,22 @@ export async function listJobs(): Promise<{ jobs: Job[] }> {
   return r.json()
 }
 
+export async function getJob(id: string): Promise<Job> {
+  const r = await fetch(`${BASE}/jobs/${id}`)
+  if (!r.ok) throw new Error(`job ${r.status}`)
+  return r.json()
+}
+
+export async function saveCalibration(jobId: string, corners: number[][]): Promise<{ ok: boolean }> {
+  const r = await fetch(`${BASE}/jobs/${jobId}/calibration`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ corners }),
+  })
+  if (!r.ok) throw new Error(`calibration ${r.status}`)
+  return r.json()
+}
+
 export async function generateReport(context: unknown, lang: string): Promise<string> {
   const r = await fetch(`${BASE}/report`, {
     method: 'POST',

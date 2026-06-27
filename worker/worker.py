@@ -110,8 +110,10 @@ def process_video(path: str, progress=None) -> dict:
     heat = np.zeros((GRID_H, GRID_W), dtype=np.int64)
     track_heat = defaultdict(lambda: np.zeros((GRID_H, GRID_W), dtype=np.int64))
     track_cols = defaultdict(list)
+    track_pts = defaultdict(list)      # per-track normalized image points (for calibration)
     ball_pts, track_ids, players_per = [], set(), []
     ball_count, frames, idx = 0, 0, -1
+    keyframe_img = None
     m = get_model()
 
     while True:
@@ -123,6 +125,8 @@ def process_video(path: str, progress=None) -> dict:
         ok, frame = cap.retrieve()
         if not ok:
             break
+        if keyframe_img is None and (idx >= (total // 2 if total else 30)):
+            keyframe_img = frame.copy()
         res = m.predict(
             frame, classes=[PERSON, BALL], conf=CONF, imgsz=IMGSZ,
             device=DEVICE, verbose=False,
@@ -144,6 +148,8 @@ def process_video(path: str, progress=None) -> dict:
                 ti = int(tid)
                 track_ids.add(ti)
                 track_heat[ti][gy, gx] += 1
+                if len(track_pts[ti]) < 80:
+                    track_pts[ti].append([round(cx / max(1, W), 4), round(cy / max(1, H), 4)])
                 if len(track_cols[ti]) < 25:
                     col = _jersey_lab(frame, xyxy)
                     if col is not None:
@@ -166,6 +172,7 @@ def process_video(path: str, progress=None) -> dict:
     # ---- team separation by jersey colour (KMeans on per-track median Lab) ----
     teams = None
     heat_a = heat_b = None
+    tid2team = {}
     try:
         tids = [t for t in track_cols if len(track_cols[t]) >= 2]
         if len(tids) >= 2:
@@ -173,6 +180,7 @@ def process_video(path: str, progress=None) -> dict:
             crit = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 20, 1.0)
             _, labels, centers = cv2.kmeans(feats, 2, None, crit, 6, cv2.KMEANS_PP_CENTERS)
             labels = labels.flatten()
+            tid2team = {t: int(lb) for t, lb in zip(tids, labels)}
             th = [np.zeros((GRID_H, GRID_W), dtype=np.int64), np.zeros((GRID_H, GRID_W), dtype=np.int64)]
             det_per = [0, 0]
             for t, lb in zip(tids, labels):
@@ -190,6 +198,29 @@ def process_video(path: str, progress=None) -> dict:
     except Exception:
         teams = None
 
+    # ---- calibration payload: keyframe + team-tagged player points (image space) ----
+    points = []
+    for tid, plist in track_pts.items():
+        tm = tid2team.get(tid, -1)
+        for p in plist:
+            points.append([p[0], p[1], tm])
+    if len(points) > 6000:
+        step = max(1, len(points) // 6000)
+        points = points[::step][:6000]
+
+    keyframe = None
+    try:
+        if keyframe_img is not None:
+            import base64
+            h0, w0 = keyframe_img.shape[:2]
+            sc = 480.0 / max(1, w0)
+            small = cv2.resize(keyframe_img, (int(w0 * sc), int(h0 * sc)))
+            okj, buf = cv2.imencode(".jpg", small, [int(cv2.IMWRITE_JPEG_QUALITY), 60])
+            if okj:
+                keyframe = "data:image/jpeg;base64," + base64.b64encode(buf.tobytes()).decode()
+    except Exception:
+        keyframe = None
+
     return {
         "video": {"width": W, "height": H, "fps": round(float(fps), 2),
                   "frames_total": total, "duration_sec": round(dur, 1)},
@@ -205,6 +236,8 @@ def process_video(path: str, progress=None) -> dict:
         "heatmap_b": heat_b,
         "teams": teams,
         "grid": {"w": GRID_W, "h": GRID_H},
+        "points": points,
+        "keyframe": keyframe,
         "model": MODEL,
     }
 

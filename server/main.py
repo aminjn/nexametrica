@@ -297,14 +297,25 @@ async def upload_video(file: UploadFile = File(...)):
     return jobstore.update(job["id"], video_path=dest)
 
 
+def _light(j: dict) -> dict:
+    """Lightweight job for the list: drop video_path + heavy result fields
+    (keyframe / points / ball trajectory). Adds `calibratable`."""
+    out = {k: v for k, v in j.items() if k != "video_path"}
+    res = j.get("result") or {}
+    if res:
+        lr = {k: v for k, v in res.items() if k not in ("keyframe", "points")}
+        if isinstance(lr.get("ball"), dict):
+            b = dict(lr["ball"])
+            b.pop("trajectory", None)
+            lr["ball"] = b
+        out["result"] = lr
+        out["calibratable"] = bool(res.get("keyframe") and res.get("points"))
+    return out
+
+
 @app.get("/api/jobs")
 def list_jobs():
-    # strip server-side paths from the public listing
-    return {
-        "jobs": [
-            {k: v for k, v in j.items() if k != "video_path"} for j in jobstore.all_jobs()
-        ]
-    }
+    return {"jobs": [_light(j) for j in jobstore.all_jobs()]}
 
 
 @app.get("/api/jobs/{jid}")
@@ -313,6 +324,14 @@ def get_job(jid: str):
     if not j:
         raise HTTPException(status_code=404, detail="job not found")
     return {k: v for k, v in j.items() if k != "video_path"}
+
+
+@app.post("/api/jobs/{jid}/calibration")
+def save_calibration(jid: str, body: dict):
+    if not jobstore.get(jid):
+        raise HTTPException(status_code=404, detail="job not found")
+    jobstore.update(jid, calibration=body.get("corners"))
+    return {"ok": True}
 
 
 @app.get("/api/worker/next", dependencies=[Depends(require_worker)])

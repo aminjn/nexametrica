@@ -58,6 +58,12 @@ export async function deleteJob(id: string): Promise<{ ok: boolean }> {
   return r.json()
 }
 
+export async function reprocessJob(id: string): Promise<{ ok: boolean }> {
+  const r = await fetch(`${BASE}/jobs/${id}/reprocess`, { method: 'POST' })
+  if (!r.ok) throw new Error(`reprocess ${r.status}`)
+  return r.json()
+}
+
 export async function saveCalibration(jobId: string, corners: number[][]): Promise<{ ok: boolean }> {
   const r = await fetch(`${BASE}/jobs/${jobId}/calibration`, {
     method: 'POST',

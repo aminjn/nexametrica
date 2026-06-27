@@ -337,6 +337,19 @@ def delete_job(jid: str):
     return {"ok": True}
 
 
+@app.post("/api/jobs/{jid}/reprocess")
+def reprocess_job(jid: str):
+    """Re-queue an already-uploaded video for the worker (no re-upload needed)."""
+    j = jobstore.get(jid)
+    if not j:
+        raise HTTPException(status_code=404, detail="job not found")
+    vp = j.get("video_path")
+    if not vp or not os.path.exists(vp):
+        raise HTTPException(status_code=400, detail="no stored video to reprocess")
+    jobstore.update(jid, status="queued", result=None, error="", started=None, finished=None)
+    return {"ok": True}
+
+
 @app.post("/api/jobs/{jid}/calibration")
 def save_calibration(jid: str, body: dict):
     if not jobstore.get(jid):

@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { css } from '../lib/css'
 import { Box } from './Box'
-import { uploadVideo, listJobs, deleteJob, type Job } from '../api'
+import { uploadVideo, listJobs, deleteJob, reprocessJob, type Job } from '../api'
 import { eng } from '../engine'
 import { Heatmap } from './Heatmap'
 import { Calibration } from './Calibration'
@@ -54,6 +54,18 @@ export function VideoJobs({ v }: { v: Record<string, any> }) {
       await deleteJob(j.id)
     } catch {
       refresh()   // revert on failure
+    }
+  }
+
+  async function onReprocess(e: React.MouseEvent, j: Job) {
+    e.stopPropagation()
+    setJobs((js) => js.map((x) => (x.id === j.id ? { ...x, status: 'queued', result: null } as Job : x)))
+    try {
+      await reprocessJob(j.id)
+      setMsg(L('در صفِ تحلیلِ مجدد قرار گرفت.', 'Re-queued for analysis.'))
+    } catch {
+      setMsg(L('تحلیلِ مجدد ممکن نشد (ویدیو روی سرور نیست).', 'Reprocess failed (no stored video).'))
+      refresh()
     }
   }
 
@@ -162,6 +174,19 @@ export function VideoJobs({ v }: { v: Record<string, any> }) {
                   >
                     {fa ? st.fa : st.en}
                   </span>
+                  {j.source !== 'worker' && j.status !== 'queued' && j.status !== 'processing' ? (
+                    <Box
+                      onClick={(e: React.MouseEvent) => onReprocess(e, j)}
+                      css="width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--mut);cursor:pointer;flex-shrink:0"
+                      hover="background:var(--aid);color:var(--ai)"
+                      title={L('تحلیل مجدد', 'Re-analyze')}
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                        <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+                        <path d="M21 3v6h-6" />
+                      </svg>
+                    </Box>
+                  ) : null}
                   <Box
                     onClick={(e: React.MouseEvent) => onDelete(e, j)}
                     css="width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--mut);cursor:pointer;flex-shrink:0"

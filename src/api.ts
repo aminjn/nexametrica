@@ -52,7 +52,8 @@ export async function getJob(id: string): Promise<Job> {
 }
 
 export async function deleteJob(id: string): Promise<{ ok: boolean }> {
-  const r = await fetch(`${BASE}/jobs/${id}`, { method: 'DELETE' })
+  // POST (not HTTP DELETE): the ArvanCloud CDN times out the DELETE method.
+  const r = await fetch(`${BASE}/jobs/${id}/delete`, { method: 'POST' })
   if (!r.ok) throw new Error(`delete ${r.status}`)
   return r.json()
 }

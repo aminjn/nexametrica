@@ -328,7 +328,9 @@ def get_job(jid: str):
     return {k: v for k, v in j.items() if k != "video_path"}
 
 
-@app.delete("/api/jobs/{jid}")
+# POST (not DELETE): some CDNs/proxies (ArvanCloud) mishandle the DELETE method
+# and time it out, so we expose deletion over POST.
+@app.post("/api/jobs/{jid}/delete")
 def delete_job(jid: str):
     if not jobstore.delete(jid):
         raise HTTPException(status_code=404, detail="job not found")

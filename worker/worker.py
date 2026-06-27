@@ -61,10 +61,42 @@ def get_model():
     return _model
 
 
+def _jersey_lab(frame, xyxy):
+    """Median Lab colour of a player's torso, excluding green pitch / dark pixels."""
+    import cv2
+    import numpy as np
+    x1, y1, x2, y2 = [int(v) for v in xyxy]
+    h, w = y2 - y1, x2 - x1
+    if h < 10 or w < 8:
+        return None
+    ty1, ty2 = y1 + int(0.18 * h), y1 + int(0.5 * h)
+    tx1, tx2 = x1 + int(0.2 * w), x2 - int(0.2 * w)
+    crop = frame[max(0, ty1):max(0, ty2), max(0, tx1):max(0, tx2)]
+    if crop.size == 0:
+        return None
+    hsv = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
+    hue, sat, val = hsv[:, :, 0], hsv[:, :, 1], hsv[:, :, 2]
+    keep = ~(((hue >= 35) & (hue <= 85) & (sat > 40)) | (val < 35))
+    pix = crop[keep]
+    if pix.shape[0] < 12:
+        pix = crop.reshape(-1, 3)
+    lab = cv2.cvtColor(pix.reshape(-1, 1, 3), cv2.COLOR_BGR2LAB).reshape(-1, 3)
+    return np.median(lab, axis=0).astype(np.float32)
+
+
+def _lab_to_hex(c):
+    import cv2
+    import numpy as np
+    px = np.array([[c]], dtype=np.uint8)
+    r, g, b = cv2.cvtColor(px, cv2.COLOR_LAB2RGB)[0, 0]
+    return "#%02x%02x%02x" % (int(r), int(g), int(b))
+
+
 def process_video(path: str, progress=None) -> dict:
     import cv2
     import numpy as np
     import supervision as sv
+    from collections import defaultdict
 
     cap = cv2.VideoCapture(path)
     if not cap.isOpened():
@@ -76,6 +108,8 @@ def process_video(path: str, progress=None) -> dict:
 
     tracker = sv.ByteTrack(frame_rate=int(round(fps)))
     heat = np.zeros((GRID_H, GRID_W), dtype=np.int64)
+    track_heat = defaultdict(lambda: np.zeros((GRID_H, GRID_W), dtype=np.int64))
+    track_cols = defaultdict(list)
     ball_pts, track_ids, players_per = [], set(), []
     ball_count, frames, idx = 0, 0, -1
     m = get_model()
@@ -101,13 +135,19 @@ def process_video(path: str, progress=None) -> dict:
         n = 0
         for xyxy, tid in zip(tracked.xyxy, tracked.tracker_id):
             n += 1
-            if tid is not None:
-                track_ids.add(int(tid))
             cx = (xyxy[0] + xyxy[2]) / 2.0
             cy = (xyxy[1] + xyxy[3]) / 2.0
             gx = min(GRID_W - 1, max(0, int(cx / max(1, W) * GRID_W)))
             gy = min(GRID_H - 1, max(0, int(cy / max(1, H) * GRID_H)))
             heat[gy, gx] += 1
+            if tid is not None:
+                ti = int(tid)
+                track_ids.add(ti)
+                track_heat[ti][gy, gx] += 1
+                if len(track_cols[ti]) < 25:
+                    col = _jersey_lab(frame, xyxy)
+                    if col is not None:
+                        track_cols[ti].append(col)
         players_per.append(n)
 
         for xyxy in balls.xyxy:
@@ -122,6 +162,34 @@ def process_video(path: str, progress=None) -> dict:
 
     cap.release()
     dur = (total / fps) if total else 0
+
+    # ---- team separation by jersey colour (KMeans on per-track median Lab) ----
+    teams = None
+    heat_a = heat_b = None
+    try:
+        tids = [t for t in track_cols if len(track_cols[t]) >= 2]
+        if len(tids) >= 2:
+            feats = np.array([np.mean(track_cols[t], axis=0) for t in tids], dtype=np.float32)
+            crit = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 20, 1.0)
+            _, labels, centers = cv2.kmeans(feats, 2, None, crit, 6, cv2.KMEANS_PP_CENTERS)
+            labels = labels.flatten()
+            th = [np.zeros((GRID_H, GRID_W), dtype=np.int64), np.zeros((GRID_H, GRID_W), dtype=np.int64)]
+            det_per = [0, 0]
+            for t, lb in zip(tids, labels):
+                th[lb] += track_heat[t]
+                det_per[lb] += int(track_heat[t].sum())
+            teams = [
+                {
+                    "color": _lab_to_hex(centers[k]),
+                    "tracks": int((labels == k).sum()),
+                    "players_avg": round(det_per[k] / max(1, frames), 1),
+                }
+                for k in range(2)
+            ]
+            heat_a, heat_b = th[0].tolist(), th[1].tolist()
+    except Exception:
+        teams = None
+
     return {
         "video": {"width": W, "height": H, "fps": round(float(fps), 2),
                   "frames_total": total, "duration_sec": round(dur, 1)},
@@ -133,6 +201,9 @@ def process_video(path: str, progress=None) -> dict:
         },
         "ball": {"detections": ball_count, "trajectory": ball_pts[:2000]},
         "heatmap": heat.tolist(),
+        "heatmap_a": heat_a,
+        "heatmap_b": heat_b,
+        "teams": teams,
         "grid": {"w": GRID_W, "h": GRID_H},
         "model": MODEL,
     }

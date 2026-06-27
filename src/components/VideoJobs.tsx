@@ -14,7 +14,7 @@ const STATUS: Record<string, { fa: string; en: string; c: string }> = {
   failed: { fa: 'ناموفق', en: 'Failed', c: 'var(--dng)' },
 }
 
-function Heatmap({ grid }: { grid: number[][] }) {
+function Heatmap({ grid, color }: { grid: number[][]; color?: string }) {
   const rows = grid.length
   const cols = grid[0]?.length || 0
   let max = 1
@@ -29,8 +29,19 @@ function Heatmap({ grid }: { grid: number[][] }) {
         row.map((val, c) => {
           if (val <= 0) return null
           const v = val / max
-          const col = v < 0.4 ? `rgba(56,189,248,${0.25 + v})` : v < 0.7 ? `rgba(163,230,53,${0.25 + v})` : `rgba(245,158,11,${0.3 + v})`
-          return <rect key={`${r}-${c}`} x={c * cw} y={r * ch} width={cw + 0.5} height={ch + 0.5} fill={col} style={{ filter: 'blur(5px)' }} />
+          const fill = color ?? (v < 0.4 ? `rgba(56,189,248,${0.25 + v})` : v < 0.7 ? `rgba(163,230,53,${0.25 + v})` : `rgba(245,158,11,${0.3 + v})`)
+          return (
+            <rect
+              key={`${r}-${c}`}
+              x={c * cw}
+              y={r * ch}
+              width={cw + 0.5}
+              height={ch + 0.5}
+              fill={fill}
+              fillOpacity={color ? 0.15 + v * 0.85 : 1}
+              style={{ filter: 'blur(5px)' }}
+            />
+          )
         }),
       )}
     </svg>
@@ -185,7 +196,43 @@ export function VideoJobs({ v }: { v: Record<string, any> }) {
                         </div>
                       ))}
                     </div>
-                    {r.heatmap ? (
+                    {r.teams ? (
+                      <div style={css('display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap')}>
+                        {r.teams.map((tm: any, ti: number) => (
+                          <div
+                            key={ti}
+                            style={css(
+                              'display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--bd);border-radius:9px;padding:8px 12px',
+                            )}
+                          >
+                            <span style={css(`width:13px;height:13px;border-radius:4px;background:${tm.color};border:1px solid rgba(255,255,255,.25)`)}></span>
+                            <span style={css('font-size:12px;font-weight:700')}>
+                              {L('تیم', 'Team')} {ti === 0 ? 'A' : 'B'}
+                            </span>
+                            <span style={css('font-size:11px;color:var(--mut)')}>
+                              {L('میانگین', 'avg')} {faN(tm.players_avg)} {L('بازیکن', 'players')}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                    {r.heatmap_a && r.heatmap_b && r.teams ? (
+                      <div>
+                        <div style={css('font-size:11.5px;font-weight:700;color:var(--sub);margin-bottom:8px')}>
+                          {L('نقشه‌ی حرارتیِ هر تیم (از ردیابی)', 'Per-team occupancy heatmap (from tracking)')}
+                        </div>
+                        <div style={css('display:grid;grid-template-columns:1fr 1fr;gap:12px')}>
+                          <div>
+                            <div style={css(`font-size:10.5px;font-weight:700;margin-bottom:5px;color:${r.teams[0].color}`)}>{L('تیم A', 'Team A')}</div>
+                            <Heatmap grid={r.heatmap_a} color={r.teams[0].color} />
+                          </div>
+                          <div>
+                            <div style={css(`font-size:10.5px;font-weight:700;margin-bottom:5px;color:${r.teams[1].color}`)}>{L('تیم B', 'Team B')}</div>
+                            <Heatmap grid={r.heatmap_b} color={r.teams[1].color} />
+                          </div>
+                        </div>
+                      </div>
+                    ) : r.heatmap ? (
                       <div>
                         <div style={css('font-size:11.5px;font-weight:700;color:var(--sub);margin-bottom:8px')}>
                           {L('نقشه‌ی حرارتیِ حضور بازیکنان (از ردیابی)', 'Player occupancy heatmap (from tracking)')}

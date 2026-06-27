@@ -70,7 +70,6 @@ def process_video(path: str, progress=None) -> dict:
     ball_pts, track_ids, players_per = [], set(), []
     ball_count, frames, idx = 0, 0, -1
     m = get_model()
-    half = DEVICE != "cpu"
 
     while True:
         if not cap.grab():
@@ -83,7 +82,7 @@ def process_video(path: str, progress=None) -> dict:
             break
         res = m.predict(
             frame, classes=[PERSON, BALL], conf=CONF, imgsz=IMGSZ,
-            half=half, device=DEVICE, verbose=False,
+            device=DEVICE, verbose=False,
         )[0]
         det = sv.Detections.from_ultralytics(res)
         players = det[det.class_id == PERSON]

@@ -60,26 +60,39 @@ def _smooth(series, win=SMOOTH_WIN):
     return out
 
 
-def track_metrics(series, max_speed=MAX_SPEED):
+def _peak_speed(series, win_sec, max_speed):
+    """Top speed over a sliding time window — smooths per-frame homography jitter
+    that otherwise pegs instantaneous speed at the cap."""
+    peak, j = 0.0, 0
+    for i in range(len(series)):
+        while series[i][0] - series[j][0] > win_sec and j < i:
+            j += 1
+        dt = series[i][0] - series[j][0]
+        if dt >= win_sec * 0.5:
+            v = hypot(series[i][1] - series[j][1], series[i][2] - series[j][2]) / dt
+            if v <= max_speed:            # over-cap window = residual jitter, ignore
+                peak = max(peak, v)
+    return peak
+
+
+def track_metrics(series, max_speed=MAX_SPEED, win_sec=0.6):
     """(distance_m, avg_speed_mps, max_speed_mps, seconds) for one track."""
     series = _reject_teleports(_dedup_sort(series), max_speed)
     if len(series) < 3:
         return 0.0, 0.0, 0.0, 0.0
     series = _smooth(series)
-    dist, speeds = 0.0, []
+    dist = 0.0
     for (t0, x0, y0), (t1, x1, y1) in zip(series, series[1:]):
         dt = t1 - t0
         if dt <= 0:
             continue
         d = hypot(x1 - x0, y1 - y0)
-        v = d / dt
-        if v > max_speed:
+        if d / dt > max_speed:
             continue
         dist += d
-        speeds.append(v)
-    avg = sum(speeds) / len(speeds) if speeds else 0.0
-    mx = min(max(speeds), max_speed) if speeds else 0.0
     secs = series[-1][0] - series[0][0]
+    mx = _peak_speed(series, win_sec, max_speed)     # windowed → realistic peak
+    avg = (dist / secs) if secs > 0 else 0.0
     return dist, avg, mx, secs
 
 

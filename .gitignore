@@ -19,3 +19,7 @@ yarn-error.log*
 
 # TS build info
 *.tsbuildinfo
+
+# pitch model weights (download once with worker/download-pitch-model.sh)
+worker/models/
+*.pt

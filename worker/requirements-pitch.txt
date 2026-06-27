@@ -1,6 +1,0 @@
-# Auto per-frame calibration via the Roboflow backend (runs locally on the GPU
-# after a one-time weights download). Install on the Z440 ONLY if you use the
-# Roboflow path (ROBOFLOW_API_KEY). Not needed for the local-.pt path, which uses
-# ultralytics (already in requirements.txt) and is fully offline.
-inference>=0.21.0
-sports @ git+https://github.com/roboflow/sports.git

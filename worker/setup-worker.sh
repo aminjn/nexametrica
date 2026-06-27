@@ -23,8 +23,11 @@ echo "▶ نصب PyTorch با CUDA 12.1 (مناسب RTX 3070)…"
 
 echo "▶ نصب کتابخانه‌های بینایی ماشین (ultralytics/supervision/opencv)…"
 .venv/bin/pip install -r requirements.txt
-# توجه: کالیبراسیونِ خودکارِ زمین به چیزِ اضافه‌ای روی Z440 نیاز ندارد —
-# با همین ultralytics و یک فایلِ مدلِ محلی (PITCH_MODEL_PATH) کاملاً آفلاین کار می‌کند.
+# کالیبراسیونِ خودکارِ زمین به چیزِ اضافه‌ای نیاز ندارد — فقط همین ultralytics و یک
+# فایلِ مدلِ محلی. هیچ API ای، نه موقعِ اجرا و نه حتی یک‌بار.
+
+echo "▶ دانلودِ یک‌باره‌ی مدلِ زمین (فقط یک فایل، بدونِ هیچ API/اکانت)…"
+bash download-pitch-model.sh || echo "⚠ مدلِ زمین دانلود نشد — بعداً دستی: bash download-pitch-model.sh"
 
 [ -f .env ] || cp .env.example .env
 

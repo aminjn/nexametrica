@@ -126,7 +126,8 @@ def summarise(track_series, tid2team=None):
         if team in (0, 1):
             team_dist[team] += dist
             team_secs[team] += secs
-            team_topspeed[team] = max(team_topspeed[team], mx)
+            if secs >= 3.0:   # only trust longer tracks for the team's top speed
+                team_topspeed[team] = max(team_topspeed[team], mx)
             team_tracks[team] += 1
 
     per_track.sort(key=lambda r: r["distance_m"], reverse=True)

@@ -8,6 +8,7 @@ import { uploadVideo, listJobs, type Job } from '../api'
 import { eng } from '../engine'
 import { Heatmap } from './Heatmap'
 import { Calibration } from './Calibration'
+import { Physical } from './Physical'
 
 const STATUS: Record<string, { fa: string; en: string; c: string }> = {
   queued: { fa: 'در صف', en: 'Queued', c: 'var(--warn)' },
@@ -221,6 +222,8 @@ export function VideoJobs({ v }: { v: Record<string, any> }) {
                         {faN(r.processed_frames)} {L('فریمِ پردازش‌شده', 'frames processed')} · {r.model}
                       </div>
                     ) : null}
+                    {/* automatic per-frame calibration → real physical analytics */}
+                    {r.calibration_auto && r.physical ? <Physical v={v} job={j} /> : null}
                     {(j as any).calibratable ? (
                       <div style={css('margin-top:12px')}>
                         <button
@@ -233,7 +236,11 @@ export function VideoJobs({ v }: { v: Record<string, any> }) {
                             <rect x="3" y="3" width="18" height="18" rx="2" />
                             <path d="M3 9h18M9 3v18" />
                           </svg>
-                          {calib === j.id ? L('بستن کالیبراسیون', 'Close calibration') : L('کالیبراسیون زمین', 'Field calibration')}
+                          {calib === j.id
+                            ? L('بستن کالیبراسیون', 'Close calibration')
+                            : r.calibration_auto
+                              ? L('کالیبراسیون دستی (اختیاری)', 'Manual calibration (optional)')
+                              : L('کالیبراسیون زمین', 'Field calibration')}
                         </button>
                         {calib === j.id ? <Calibration v={v} job={j} /> : null}
                       </div>

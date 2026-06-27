@@ -37,6 +37,9 @@ SAMPLE = int(_env("SAMPLE", "3"))      # process every Nth frame
 IMGSZ = int(_env("IMGSZ", "1280"))
 DEVICE = _env("DEVICE", "0")           # "0" for GPU, "cpu" otherwise
 GRID_W, GRID_H = 32, 20
+PITCH = _env("PITCH", "1") not in ("0", "false", "no", "")  # auto per-frame calibration
+PITCH_EVERY = int(_env("PITCH_EVERY", "2"))   # run pitch model every Nth processed frame
+PGRID_W, PGRID_H = 52, 34               # pitch-space heatmap (~2 m cells over 105x68)
 
 PERSON, BALL = 0, 32  # COCO class ids
 
@@ -137,6 +140,22 @@ def process_video(path: str, progress=None) -> dict:
     fallback_img = None
     m = get_model()
 
+    # ---- automatic per-frame pitch calibration (optional) ----
+    pitch_ok = False
+    cur_H = None
+    pitch_len = pitch_wid = None
+    track_xy_m = defaultdict(list)   # track -> [(t_sec, x_m, y_m)] in real pitch metres
+    pheat = np.zeros((PGRID_H, PGRID_W), dtype=np.int64)
+    pheat_t = [np.zeros((PGRID_H, PGRID_W), dtype=np.int64),
+               np.zeros((PGRID_H, PGRID_W), dtype=np.int64)]
+    if PITCH:
+        try:
+            import pitch as pitch_mod
+            pitch_ok = pitch_mod.available()
+        except Exception as e:
+            print("pitch import failed:", e, flush=True)
+            pitch_ok = False
+
     while True:
         if not cap.grab():
             break
@@ -146,6 +165,14 @@ def process_video(path: str, progress=None) -> dict:
         ok, frame = cap.retrieve()
         if not ok:
             break
+        t_sec = idx / fps if fps else 0.0
+        if pitch_ok and frames % PITCH_EVERY == 0:
+            try:
+                hh = pitch_mod.homography(frame)
+                if hh is not None:
+                    cur_H, pitch_len, pitch_wid = hh
+            except Exception:
+                pass
         res = m.predict(
             frame, classes=[PERSON, BALL], conf=CONF, imgsz=IMGSZ,
             device=DEVICE, verbose=False,
@@ -177,6 +204,13 @@ def process_video(path: str, progress=None) -> dict:
                     col = _jersey_lab(frame, xyxy)
                     if col is not None:
                         track_cols[ti].append(col)
+                # real pitch position from the feet (bottom-centre of the box)
+                if cur_H is not None:
+                    pm = pitch_mod.project(cur_H, float(cx), float(xyxy[3]))
+                    if pm is not None:
+                        xm, ym = pm[0] / 100.0, pm[1] / 100.0   # cm -> m
+                        if -5 <= xm <= (pitch_len or 12000) / 100 + 5 and -5 <= ym <= (pitch_wid or 7000) / 100 + 5:
+                            track_xy_m[ti].append((t_sec, xm, ym))
         players_per.append(n)
 
         # Score this frame as a calibration keyframe candidate. A wide tactical
@@ -238,6 +272,31 @@ def process_video(path: str, progress=None) -> dict:
     except Exception:
         teams = None
 
+    # ---- real-pitch heatmaps + physical analytics (from auto calibration) ----
+    physical = None
+    pitch_heat = pitch_heat_a = pitch_heat_b = None
+    if pitch_ok and track_xy_m:
+        try:
+            import physics
+            plen = (pitch_len or 12000) / 100.0   # metres
+            pwid = (pitch_wid or 7000) / 100.0
+            for tid, series in track_xy_m.items():
+                lb = tid2team.get(tid, -1)
+                for (_t, xm, ym) in series:
+                    gx = min(PGRID_W - 1, max(0, int(xm / max(1e-3, plen) * PGRID_W)))
+                    gy = min(PGRID_H - 1, max(0, int(ym / max(1e-3, pwid) * PGRID_H)))
+                    pheat[gy, gx] += 1
+                    if lb in (0, 1):
+                        pheat_t[lb][gy, gx] += 1
+            pitch_heat = pheat.tolist()
+            pitch_heat_a, pitch_heat_b = pheat_t[0].tolist(), pheat_t[1].tolist()
+            physical = physics.summarise(track_xy_m, tid2team)
+            physical["pitch_m"] = [round(plen, 1), round(pwid, 1)]
+            physical["calibrated_tracks"] = len(track_xy_m)
+        except Exception as e:
+            print("physics failed:", e, flush=True)
+            physical = None
+
     # ---- calibration payload: keyframe + team-tagged player points (image space) ----
     points = []
     for tid, plist in track_pts.items():
@@ -292,6 +351,11 @@ def process_video(path: str, progress=None) -> dict:
         "points": points,
         "keyframe": keyframe,
         "keyframes": keyframes,
+        "calibration_auto": bool(pitch_ok and physical),
+        "pitch_heatmap": pitch_heat,
+        "pitch_heatmap_a": pitch_heat_a,
+        "pitch_heatmap_b": pitch_heat_b,
+        "physical": physical,
         "model": MODEL,
     }
 

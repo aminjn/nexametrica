@@ -312,6 +312,8 @@ def _light(j: dict) -> dict:
             lr["ball"] = b
         out["result"] = lr
         out["calibratable"] = bool(res.get("keyframe") and res.get("points"))
+    vp = j.get("video_path")
+    out["has_video"] = bool(vp and os.path.exists(vp))
     return out
 
 

@@ -174,7 +174,7 @@ export function VideoJobs({ v }: { v: Record<string, any> }) {
                   >
                     {fa ? st.fa : st.en}
                   </span>
-                  {j.source !== 'worker' && j.status !== 'queued' && j.status !== 'processing' ? (
+                  {(j as any).has_video && j.status !== 'queued' && j.status !== 'processing' ? (
                     <Box
                       onClick={(e: React.MouseEvent) => onReprocess(e, j)}
                       css="width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--mut);cursor:pointer;flex-shrink:0"

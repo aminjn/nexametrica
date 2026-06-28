@@ -272,6 +272,7 @@ def process_video(path: str, progress=None) -> dict:
             _, labels, centers = cv2.kmeans(feats, 2, None, crit, 6, cv2.KMEANS_PP_CENTERS)
             labels = labels.flatten()
             sep = float(np.linalg.norm(centers[0] - centers[1]))
+            print(f"team colour separation: {sep:.1f} (single-team if < {TEAM_SPLIT_MIN})", flush=True)
             if sep < TEAM_SPLIT_MIN:
                 # one kit → single group, no A/B
                 single_team = True

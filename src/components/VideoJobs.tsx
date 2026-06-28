@@ -255,6 +255,18 @@ export function VideoJobs({ v }: { v: Record<string, any> }) {
                         ) : null}
                       </div>
                     ) : null}
+                    {r.possession && r.teams && !r.single_team && !(j as any).single_override ? (
+                      <div style={css('margin-bottom:14px')}>
+                        <div style={css('display:flex;justify-content:space-between;font-size:11.5px;font-weight:700;margin-bottom:6px')}>
+                          <span style={css('color:var(--sub)')}>{L('مالکیتِ توپ', 'Ball possession')}</span>
+                          <span style={css('color:var(--mut)')}>{L('تیم A', 'Team A')} {faN(r.possession.a)}٪ · {L('تیم B', 'Team B')} {faN(r.possession.b)}٪</span>
+                        </div>
+                        <div style={css('height:10px;border-radius:6px;overflow:hidden;display:flex')}>
+                          <div style={css(`width:${r.possession.a}%;background:${r.teams[0].color}`)}></div>
+                          <div style={css(`width:${r.possession.b}%;background:${r.teams[1].color}`)}></div>
+                        </div>
+                      </div>
+                    ) : null}
                     {r.heatmap_a && r.heatmap_b && r.teams && !(j as any).single_override ? (
                       <div>
                         <div style={css('font-size:11.5px;font-weight:700;color:var(--sub);margin-bottom:8px')}>

@@ -133,6 +133,7 @@ def process_video(path: str, progress=None) -> dict:
     track_cols = defaultdict(list)
     track_pts = defaultdict(list)      # per-track normalized image points (for calibration)
     ball_pts, track_ids, players_per = [], set(), []
+    poss_by_tid = defaultdict(int)     # track -> frames it held the ball
     ball_count, frames, idx = 0, 0, -1
     # Keep the best "wide tactical" frame per time-segment, so the UI can offer
     # several clean candidates from different moments (not one auto-pick that may
@@ -207,6 +208,7 @@ def process_video(path: str, progress=None) -> dict:
         tracked = tracker.update_with_detections(players)
         n = 0
         nx_list, ny_list, bh_list = [], [], []
+        frame_players = []          # (cx, cy, tid) this frame, for ball possession
         for xyxy, tid in zip(tracked.xyxy, tracked.tracker_id):
             n += 1
             cx = (xyxy[0] + xyxy[2]) / 2.0
@@ -220,6 +222,7 @@ def process_video(path: str, progress=None) -> dict:
             if tid is not None:
                 ti = int(tid)
                 track_ids.add(ti)
+                frame_players.append((cx, cy, ti))
                 track_heat[ti][gy, gx] += 1
                 if len(track_pts[ti]) < 80:
                     track_pts[ti].append([round(float(cx) / max(1, W), 4), round(float(cy) / max(1, H), 4)])
@@ -260,9 +263,17 @@ def process_video(path: str, progress=None) -> dict:
 
         for xyxy in balls.xyxy:
             ball_count += 1
-            bx = (xyxy[0] + xyxy[2]) / 2.0 / max(1, W)
-            by = (xyxy[1] + xyxy[3]) / 2.0 / max(1, H)
-            ball_pts.append([round(float(bx), 3), round(float(by), 3)])
+            bxp = (xyxy[0] + xyxy[2]) / 2.0
+            byp = (xyxy[1] + xyxy[3]) / 2.0
+            ball_pts.append([round(float(bxp) / max(1, W), 3), round(float(byp) / max(1, H), 3)])
+            # possession: nearest player within reach owns the ball this frame
+            owner, od = None, 1e18
+            for (px, py, ti) in frame_players:
+                d = (px - bxp) ** 2 + (py - byp) ** 2
+                if d < od:
+                    od, owner = d, ti
+            if owner is not None and od ** 0.5 < 0.06 * max(W, H):
+                poss_by_tid[owner] += 1
 
         frames += 1
         if progress and frames % 30 == 0:
@@ -320,6 +331,16 @@ def process_video(path: str, progress=None) -> dict:
                 heat_a, heat_b = th[0].tolist(), th[1].tolist()
     except Exception:
         teams = None
+
+    # ---- ball possession by team (nearest player to the ball) ----
+    possession = None
+    if not single_team and tid2team:
+        pa = sum(c for t, c in poss_by_tid.items() if tid2team.get(t) == 0)
+        pb = sum(c for t, c in poss_by_tid.items() if tid2team.get(t) == 1)
+        tot = pa + pb
+        if tot >= 20:    # need enough ball-frames to be meaningful
+            possession = {"a": round(100 * pa / tot), "b": round(100 * pb / tot), "frames": tot}
+            print(f"possession: A {possession['a']}% / B {possession['b']}% ({tot} ball-frames)", flush=True)
 
     # ---- real-pitch heatmaps + physical analytics (from auto calibration) ----
     physical = None
@@ -426,6 +447,7 @@ def process_video(path: str, progress=None) -> dict:
         "heatmap_b": heat_b,
         "teams": teams,
         "single_team": single_team,
+        "possession": possession,
         "grid": {"w": GRID_W, "h": GRID_H},
         "points": points,
         "keyframe": keyframe,

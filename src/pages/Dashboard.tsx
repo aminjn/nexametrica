@@ -47,6 +47,18 @@ export function Dashboard({ v }: PageProps) {
               </div>
             ))}
           </div>
+          {(job as any).result?.possession && (job as any).result?.teams && !(job as any).result?.single_team ? (
+            <div style={css('background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px 17px;margin-top:14px')}>
+              <div style={css('display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:8px')}>
+                <span style={css('color:var(--sub)')}>{L('مالکیتِ توپ (واقعی)', 'Ball possession (real)')}</span>
+                <span style={css('color:var(--mut)')}>{L('A', 'A')} {faN((job as any).result.possession.a)}٪ · {L('B', 'B')} {faN((job as any).result.possession.b)}٪</span>
+              </div>
+              <div style={css('height:11px;border-radius:6px;overflow:hidden;display:flex')}>
+                <div style={css(`width:${(job as any).result.possession.a}%;background:${(job as any).result.teams[0].color}`)}></div>
+                <div style={css(`width:${(job as any).result.possession.b}%;background:${(job as any).result.teams[1].color}`)}></div>
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
 

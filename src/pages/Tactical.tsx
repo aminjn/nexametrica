@@ -1,13 +1,47 @@
 import { Box } from '../components/Box'
 import { css } from '../lib/css'
 import type { PageProps } from './types'
+import { useLatestPhysicalJob } from '../lib/useLatestJob'
+import { Heatmap } from '../components/Heatmap'
 
 // Ported from prototype lines 468–519. vm = v.vm (engine.vm_tactical()).
+// Top block is REAL — the latest analysed video's true top-down pitch heatmap.
 export function Tactical({ e, v }: PageProps) {
   const t = v.t
   const vm = v.vm
+  const fa = v.lang === 'fa'
+  const L = (f: string, en: string) => (fa ? f : en)
+  const job = useLatestPhysicalJob()
+  const rr = (job as any)?.result || {}
+  const single = !!rr.single_team
+  const hasReal = !!(rr.pitch_heatmap_a || rr.pitch_heatmap)
+  const colorOf = (i: number) => rr.teams?.[i]?.color || (i === 0 ? '#4f86ff' : '#ff5a5a')
+
   return (
     <div style={css('max-width:1320px;margin:0 auto')}>
+      {job && hasReal ? (
+        <div style={css('background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:18px;margin-bottom:16px')}>
+          <div style={css('display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap')}>
+            <span style={css('background:var(--aid);color:var(--ai);font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px')}>{L('داده‌ی واقعی', 'Real data')}</span>
+            <div style={css('font-weight:800;font-size:14px')}>{L('نقشه‌ی حرارتیِ تاپ‌ویوِ واقعی (متر)', 'Real top-down heatmap (metres)')}</div>
+            <span style={css('font-size:11px;color:var(--mut)')}>· {(job as any).name}</span>
+          </div>
+          {rr.pitch_heatmap_a && rr.pitch_heatmap_b && !single ? (
+            <div style={css('display:grid;grid-template-columns:1fr 1fr;gap:14px')}>
+              <div>
+                <div style={css('font-size:11px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:6px')}><span style={css(`width:11px;height:11px;border-radius:3px;background:${colorOf(0)}`)}></span>{L('تیم A', 'Team A')}</div>
+                <Heatmap grid={rr.pitch_heatmap_a} />
+              </div>
+              <div>
+                <div style={css('font-size:11px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:6px')}><span style={css(`width:11px;height:11px;border-radius:3px;background:${colorOf(1)}`)}></span>{L('تیم B', 'Team B')}</div>
+                <Heatmap grid={rr.pitch_heatmap_b} />
+              </div>
+            </div>
+          ) : (
+            <Heatmap grid={rr.pitch_heatmap_a || rr.pitch_heatmap} />
+          )}
+        </div>
+      ) : null}
       <div
         style={css(
           'display:flex;gap:6px;background:var(--card);border:1px solid var(--bd);border-radius:11px;padding:4px;margin-bottom:16px;width:fit-content;flex-wrap:wrap',

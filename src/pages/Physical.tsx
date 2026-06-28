@@ -1,13 +1,69 @@
 import { Box } from '../components/Box'
 import { css } from '../lib/css'
 import type { PageProps } from './types'
+import { useLatestPhysicalJob } from '../lib/useLatestJob'
+import { Physical as RealPhysical } from '../components/Physical'
+import { eng } from '../engine'
 
 // Ported from prototype lines 521–569. vm = v.vm (engine.vm_physical()).
+// The top block is REAL — it pulls the latest analysed video's physical stats.
 export function Physical({ e, v }: PageProps) {
   const t = v.t
   const vm = v.vm
+  const fa = v.lang === 'fa'
+  const L = (f: string, en: string) => (fa ? f : en)
+  const faN = (s: any) => (eng as any).faN(s)
+  const job = useLatestPhysicalJob()
+  const phys = (job as any)?.result?.physical
+
+  // real aggregate KPIs from the latest analysed video
+  let kpi: { distKm: string; top: number; players: number; mins: number } | null = null
+  if (phys?.players?.length) {
+    const totalM = (phys.teams || []).reduce((s: number, tm: any) => s + (tm.distance_total_m || 0), 0)
+      || phys.players.reduce((s: number, p: any) => s + (p.distance_m || 0), 0)
+    const top = Math.max(...phys.players.map((p: any) => p.max_speed_kmh || 0))
+    const secs = Math.max(...phys.players.map((p: any) => p.seconds || 0))
+    kpi = { distKm: (totalM / 1000).toFixed(2), top: Math.round(top * 10) / 10, players: phys.player_count, mins: Math.round(secs / 60) }
+  }
+
   return (
     <div style={css('max-width:1320px;margin:0 auto')}>
+      {job && phys ? (
+        <div style={css('margin-bottom:16px')}>
+          <div style={css('display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap')}>
+            <span style={css('background:var(--aid);color:var(--ai);font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px')}>{L('داده‌ی واقعی', 'Real data')}</span>
+            <div style={css('font-weight:800;font-size:15px')}>{L('آخرین آنالیزِ واقعی', 'Latest real analysis')}</div>
+            <span style={css('font-size:11.5px;color:var(--mut)')}>· {(job as any).name}</span>
+          </div>
+          {kpi ? (
+            <div style={css('display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:14px')}>
+              {[
+                [L('مسافتِ کل (همه‌ی بازیکنان)', 'Total distance (all players)'), `${faN(kpi.distKm)}`, ' km'],
+                [L('بیشینه سرعت', 'Top speed'), `${faN(kpi.top)}`, ' km/h'],
+                [L('بازیکنان (Re-ID)', 'Players (Re-ID)'), `${faN(kpi.players)}`, ''],
+                [L('بازه‌ی ردیابی', 'Tracked span'), `${faN(kpi.mins)}`, ' min'],
+              ].map(([lab, val, unit], i) => (
+                <div key={i} style={css('background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:15px 16px')}>
+                  <div style={css('font-size:11px;color:var(--sub);margin-bottom:8px')}>{lab as string}</div>
+                  <div style={css('font-size:23px;font-weight:800')}>{val as string}<span style={css('font-size:13px;color:var(--mut);font-weight:600')}>{unit as string}</span></div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          <div style={css('background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:4px 16px 16px')}>
+            <RealPhysical v={v} job={job} />
+          </div>
+        </div>
+      ) : (
+        <div style={css('background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px;margin-bottom:16px;font-size:12.5px;color:var(--mut);line-height:1.8')}>
+          {L('هنوز آنالیزِ واقعی‌ای نیست. در «کتابخانه ویدیو» یک ویدیوی پیوسته آپلود کن تا این بخش با داده‌ی واقعی پر شود. نمونه‌ی زیر دموی طراحی است.',
+            'No real analysis yet. Upload a continuous video in “Video Library” to fill this with real data. The sample below is a design demo.')}
+        </div>
+      )}
+
+      <div style={css('display:flex;align-items:center;gap:8px;margin-bottom:10px')}>
+        <span style={css('background:var(--bd2);color:var(--mut);font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px')}>{L('نمونه‌ی طراحی', 'Design sample')}</span>
+      </div>
       <div style={css('display:grid;grid-template-columns:repeat(5,1fr);gap:13px;margin-bottom:14px')}>
         <div style={css('background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:15px 16px')}>
           <div style={css('font-size:11px;color:var(--sub);margin-bottom:8px')}>{t.distance}</div>

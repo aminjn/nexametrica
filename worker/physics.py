@@ -145,6 +145,46 @@ def summarise(track_series, tid2team=None):
             "stable_tracks": len(per_track)}
 
 
+def summarise_players(players, min_seconds=5.0):
+    """Per-player stats after Re-ID stitching. players: [{player, team, tracks,
+    points:[(t,x,y)...]}]. Returns per-player + per-team rollup + player_count."""
+    out = []
+    team_dist = defaultdict(float)
+    team_top = defaultdict(float)
+    team_n = defaultdict(int)
+    for pl in players:
+        dist, avg, mx, secs = track_metrics(pl["points"])
+        if secs < min_seconds or dist <= 0:
+            continue
+        team = pl.get("team", -1)
+        out.append({
+            "player": pl["player"],
+            "team": int(team),
+            "tracks": pl.get("tracks", 1),
+            "distance_m": round(dist, 1),
+            "seconds": round(secs, 1),
+            "avg_speed_kmh": round(avg * 3.6, 1),
+            "max_speed_kmh": round(mx * 3.6, 1),
+        })
+        if team in (0, 1):
+            team_dist[team] += dist
+            team_n[team] += 1
+            if secs >= 3.0:
+                team_top[team] = max(team_top[team], mx)
+    out.sort(key=lambda r: r["distance_m"], reverse=True)
+    teams = []
+    for k in (0, 1):
+        if team_n[k]:
+            teams.append({
+                "team": k,
+                "players": team_n[k],
+                "distance_total_m": round(team_dist[k], 1),
+                "distance_avg_m": round(team_dist[k] / team_n[k], 1),
+                "top_speed_kmh": round(team_top[k] * 3.6, 1),
+            })
+    return {"players": out[:28], "teams": teams, "player_count": len(out)}
+
+
 if __name__ == "__main__":
     # straight line, 5 m/s for 10 s -> ~50 m, ~5 m/s, capped max.
     a = [(t * 0.1, 5.0 * (t * 0.1), 0.0) for t in range(101)]

@@ -303,9 +303,20 @@ def process_video(path: str, progress=None) -> dict:
                         pheat_t[lb][gy, gx] += 1
             pitch_heat = pheat.tolist()
             pitch_heat_a, pitch_heat_b = pheat_t[0].tolist(), pheat_t[1].tolist()
-            physical = physics.summarise(track_xy_m, tid2team)
+            # Re-ID: stitch fragmented tracks into players, then per-player stats.
+            import reid
+            tracklets = []
+            for tid, series in track_xy_m.items():
+                col = None
+                if track_cols.get(tid):
+                    col = [float(c) for c in np.mean(track_cols[tid], axis=0)]
+                tracklets.append({"id": int(tid), "team": tid2team.get(tid, -1),
+                                  "color": col, "points": list(series)})
+            players = reid.stitch(tracklets)
+            physical = physics.summarise_players(players)
             physical["pitch_m"] = [round(plen, 1), round(pwid, 1)]
-            physical["calibrated_tracks"] = len(track_xy_m)
+            physical["raw_tracks"] = len(track_xy_m)
+            print(f"re-id: {len(track_xy_m)} tracks -> {physical['player_count']} players", flush=True)
         except Exception as e:
             print("physics failed:", e, flush=True)
             physical = None

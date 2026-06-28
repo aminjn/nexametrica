@@ -145,6 +145,38 @@ def summarise(track_series, tid2team=None):
             "stable_tracks": len(per_track)}
 
 
+ZONE_EDGES_KMH = [7, 15, 20, 25]   # bands: 0-7, 7-15, 15-20, 20-25, 25+
+SPRINT_KMH = 20.0                  # a run above this counts as a sprint
+
+
+def speed_profile(series, max_speed=MAX_SPEED):
+    """Seconds spent in each speed band + sprint count, for one track."""
+    series = _reject_teleports(_dedup_sort(series), max_speed)
+    if len(series) < 3:
+        return [0.0] * 5, 0
+    series = _smooth(series)
+    zones = [0.0] * 5
+    sprints, in_sprint = 0, False
+    for (t0, x0, y0), (t1, x1, y1) in zip(series, series[1:]):
+        dt = t1 - t0
+        if dt <= 0:
+            continue
+        v = hypot(x1 - x0, y1 - y0) / dt
+        if v > max_speed:
+            in_sprint = False
+            continue
+        kmh = v * 3.6
+        b = sum(1 for edge in ZONE_EDGES_KMH if kmh >= edge)
+        zones[b] += dt
+        if kmh >= SPRINT_KMH:
+            if not in_sprint:
+                sprints += 1
+                in_sprint = True
+        else:
+            in_sprint = False
+    return zones, sprints
+
+
 def summarise_players(players, min_seconds=5.0):
     """Per-player stats after Re-ID stitching. players: [{player, team, tracks,
     points:[(t,x,y)...]}]. Returns per-player + per-team rollup + player_count."""
@@ -152,10 +184,16 @@ def summarise_players(players, min_seconds=5.0):
     team_dist = defaultdict(float)
     team_top = defaultdict(float)
     team_n = defaultdict(int)
+    zones_total = [0.0] * 5
+    sprints_total = 0
     for pl in players:
         dist, avg, mx, secs = track_metrics(pl["points"])
         if secs < min_seconds or dist <= 0:
             continue
+        z, sp = speed_profile(pl["points"])
+        for i in range(5):
+            zones_total[i] += z[i]
+        sprints_total += sp
         team = pl.get("team", -1)
         out.append({
             "player": pl["player"],
@@ -182,7 +220,9 @@ def summarise_players(players, min_seconds=5.0):
                 "distance_avg_m": round(team_dist[k] / team_n[k], 1),
                 "top_speed_kmh": round(team_top[k] * 3.6, 1),
             })
-    return {"players": out[:28], "teams": teams, "player_count": len(out)}
+    return {"players": out[:28], "teams": teams, "player_count": len(out),
+            "speed_zones": [round(z, 1) for z in zones_total],
+            "sprints": sprints_total}
 
 
 if __name__ == "__main__":

@@ -42,6 +42,10 @@ export function Tactical({ e, v }: PageProps) {
           )}
         </div>
       ) : null}
+      <div style={css('display:flex;align-items:center;gap:8px;margin-bottom:10px')}>
+        <span style={css('background:var(--bd2);color:var(--mut);font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px')}>{L('نمونه‌ی طراحی', 'Design sample')}</span>
+        <span style={css('font-size:11px;color:var(--mut)')}>{L('شبکه‌ی پاس و کنترلِ فضا به‌زودی واقعی می‌شوند', 'Passing network & pitch control become real soon')}</span>
+      </div>
       <div
         style={css(
           'display:flex;gap:6px;background:var(--card);border:1px solid var(--bd);border-radius:11px;padding:4px;margin-bottom:16px;width:fit-content;flex-wrap:wrap',

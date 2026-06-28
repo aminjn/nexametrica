@@ -14,7 +14,7 @@ export function Physical({ v, job }: { v: Record<string, any>; job: any }) {
   const faN = (s: any) => (eng as any).faN(s)
   const r = job.result || {}
   const phys = r.physical
-  const single = !!r.single_team
+  const single = !!r.single_team || !!(job as any).single_override
   const teamsMeta = r.teams || []
   const colorOf = (i: number) => teamsMeta[i]?.color || (i === 0 ? '#4f86ff' : '#ff5a5a')
 
@@ -55,25 +55,36 @@ export function Physical({ v, job }: { v: Record<string, any>; job: any }) {
         </div>
       ) : null}
 
-      {/* per-team rollup */}
-      {phys.teams?.length ? (
-        <div style={css('display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px')}>
-          {phys.teams.map((tm: any) => (
-            <div key={tm.team} style={css('background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:11px 12px')}>
-              <div style={css('display:flex;align-items:center;gap:7px;margin-bottom:8px')}>
-                <span style={css(`width:12px;height:12px;border-radius:4px;background:${colorOf(tm.team)};border:1px solid rgba(255,255,255,.25)`)}></span>
-                <span style={css('font-size:12.5px;font-weight:800')}>{single ? L('همه‌ی بازیکنان', 'All players') : `${L('تیم', 'Team')} ${tm.team === 0 ? 'A' : 'B'}`}</span>
+      {/* per-team rollup (merged into one when single-kit / override) */}
+      {(() => {
+        const cards = single
+          ? [{
+              team: 0,
+              players: phys.player_count,
+              top_speed_kmh: Math.max(0, ...(phys.players || []).map((p: any) => p.max_speed_kmh || 0)),
+              distance_total_m: (phys.players || []).reduce((s: number, p: any) => s + (p.distance_m || 0), 0),
+              distance_avg_m: phys.player_count ? (phys.players || []).reduce((s: number, p: any) => s + (p.distance_m || 0), 0) / phys.player_count : 0,
+            }]
+          : (phys.teams || [])
+        return cards.length ? (
+          <div style={css(`display:grid;grid-template-columns:${single ? '1fr' : '1fr 1fr'};gap:10px;margin-bottom:14px`)}>
+            {cards.map((tm: any, i: number) => (
+              <div key={i} style={css('background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:11px 12px')}>
+                <div style={css('display:flex;align-items:center;gap:7px;margin-bottom:8px')}>
+                  <span style={css(`width:12px;height:12px;border-radius:4px;background:${colorOf(tm.team)};border:1px solid rgba(255,255,255,.25)`)}></span>
+                  <span style={css('font-size:12.5px;font-weight:800')}>{single ? L('همه‌ی بازیکنان', 'All players') : `${L('تیم', 'Team')} ${tm.team === 0 ? 'A' : 'B'}`}</span>
+                </div>
+                <div style={css('display:grid;grid-template-columns:repeat(4,1fr);gap:8px')}>
+                  <Stat lab={L('بیشینه سرعت', 'Top speed')} val={`${faN(Math.round((tm.top_speed_kmh || 0) * 10) / 10)} ${L('کیلومتر/ساعت', 'km/h')}`} />
+                  <Stat lab={L('بازیکنان', 'Players')} val={faN(tm.players)} />
+                  <Stat lab={L('مسافتِ کل', 'Total dist')} val={`${faN(Math.round(tm.distance_total_m))} ${L('م', 'm')}`} />
+                  <Stat lab={L('میانگین/بازیکن', 'Avg/player')} val={`${faN(Math.round(tm.distance_avg_m || 0))} ${L('م', 'm')}`} />
+                </div>
               </div>
-              <div style={css('display:grid;grid-template-columns:1fr 1fr;gap:8px')}>
-                <Stat lab={L('بیشینه سرعت', 'Top speed')} val={`${faN(tm.top_speed_kmh)} ${L('کیلومتر/ساعت', 'km/h')}`} />
-                <Stat lab={L('بازیکنان', 'Players')} val={faN(tm.players)} />
-                <Stat lab={L('مسافتِ کل', 'Total dist')} val={`${faN(Math.round(tm.distance_total_m))} ${L('م', 'm')}`} />
-                <Stat lab={L('میانگین/بازیکن', 'Avg/player')} val={`${faN(Math.round(tm.distance_avg_m || 0))} ${L('م', 'm')}`} />
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : null}
+            ))}
+          </div>
+        ) : null
+      })()}
 
       {/* per-player (after Re-ID stitching) */}
       {phys.players?.length ? (
@@ -98,7 +109,7 @@ export function Physical({ v, job }: { v: Record<string, any>; job: any }) {
       ) : null}
 
       {/* true top-down pitch heatmap (real metres) */}
-      {fr.pitch_heatmap_a && fr.pitch_heatmap_b ? (
+      {!single && fr.pitch_heatmap_a && fr.pitch_heatmap_b ? (
         <div>
           <div style={css('font-size:11px;font-weight:700;color:var(--sub);margin-bottom:8px')}>
             {L('نقشه‌ی حرارتیِ تاپ‌ویوِ واقعی (متر)', 'True top-down heatmap (metres)')}

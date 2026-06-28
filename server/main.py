@@ -314,6 +314,7 @@ def _light(j: dict) -> dict:
         out["calibratable"] = bool(res.get("keyframe") and res.get("points"))
     vp = j.get("video_path")
     out["has_video"] = bool(vp and os.path.exists(vp))
+    out["single_override"] = bool(j.get("single_override"))
     return out
 
 
@@ -349,6 +350,15 @@ def reprocess_job(jid: str):
     if not vp or not os.path.exists(vp):
         raise HTTPException(status_code=400, detail="no stored video to reprocess")
     jobstore.update(jid, status="queued", result=None, error="", started=None, finished=None)
+    return {"ok": True}
+
+
+@app.post("/api/jobs/{jid}/single")
+def set_single_team(jid: str, body: dict):
+    """Manual override: mark a job as single-kit (training) so the UI merges A/B."""
+    if not jobstore.get(jid):
+        raise HTTPException(status_code=404, detail="job not found")
+    jobstore.update(jid, single_override=bool(body.get("single")))
     return {"ok": True}
 
 

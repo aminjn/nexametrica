@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { css } from '../lib/css'
 import { Box } from './Box'
-import { uploadVideo, listJobs, deleteJob, reprocessJob, type Job } from '../api'
+import { uploadVideo, listJobs, deleteJob, reprocessJob, setSingleTeam, type Job } from '../api'
 import { eng } from '../engine'
 import { Heatmap } from './Heatmap'
 import { Calibration } from './Calibration'
@@ -54,6 +54,16 @@ export function VideoJobs({ v }: { v: Record<string, any> }) {
       await deleteJob(j.id)
     } catch {
       refresh()   // revert on failure
+    }
+  }
+
+  async function onToggleSingle(j: Job) {
+    const next = !(j as any).single_override
+    setJobs((js) => js.map((x) => (x.id === j.id ? ({ ...x, single_override: next } as Job) : x)))
+    try {
+      await setSingleTeam(j.id, next)
+    } catch {
+      refresh()
     }
   }
 
@@ -215,8 +225,8 @@ export function VideoJobs({ v }: { v: Record<string, any> }) {
                       ))}
                     </div>
                     {r.teams ? (
-                      <div style={css('display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap')}>
-                        {r.teams.map((tm: any, ti: number) => (
+                      <div style={css('display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center')}>
+                        {(r.single_team || (j as any).single_override ? r.teams.slice(0, 1) : r.teams).map((tm: any, ti: number) => (
                           <div
                             key={ti}
                             style={css(
@@ -225,16 +235,27 @@ export function VideoJobs({ v }: { v: Record<string, any> }) {
                           >
                             <span style={css(`width:13px;height:13px;border-radius:4px;background:${tm.color};border:1px solid rgba(255,255,255,.25)`)}></span>
                             <span style={css('font-size:12px;font-weight:700')}>
-                              {r.single_team ? L('بازیکنان', 'Players') : `${L('تیم', 'Team')} ${ti === 0 ? 'A' : 'B'}`}
+                              {r.single_team || (j as any).single_override ? L('بازیکنان', 'Players') : `${L('تیم', 'Team')} ${ti === 0 ? 'A' : 'B'}`}
                             </span>
                             <span style={css('font-size:11px;color:var(--mut)')}>
                               {L('میانگین', 'avg')} {faN(tm.players_avg)} {L('بازیکن', 'players')}
                             </span>
                           </div>
                         ))}
+                        {!r.single_team ? (
+                          <Box
+                            onClick={() => onToggleSingle(j)}
+                            css={`display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;padding:7px 11px;border-radius:9px;cursor:pointer;border:1px solid var(--bd2);background:${(j as any).single_override ? 'var(--aid)' : 'transparent'};color:${(j as any).single_override ? 'var(--ai)' : 'var(--mut)'}`}
+                            hover="border-color:var(--ai)"
+                            title={L('برای تمرین/تک‌تیم تیم A/B را ادغام کن', 'Merge A/B for a single-kit / training video')}
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 6 9 17l-5-5" /></svg>
+                            {L('تک‌تیم (تمرین)', 'Single team (training)')}
+                          </Box>
+                        ) : null}
                       </div>
                     ) : null}
-                    {r.heatmap_a && r.heatmap_b && r.teams ? (
+                    {r.heatmap_a && r.heatmap_b && r.teams && !(j as any).single_override ? (
                       <div>
                         <div style={css('font-size:11.5px;font-weight:700;color:var(--sub);margin-bottom:8px')}>
                           {L('نقشه‌ی حرارتیِ هر تیم (از ردیابی)', 'Per-team occupancy heatmap (from tracking)')}

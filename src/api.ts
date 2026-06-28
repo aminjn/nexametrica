@@ -58,6 +58,16 @@ export async function deleteJob(id: string): Promise<{ ok: boolean }> {
   return r.json()
 }
 
+export async function setSingleTeam(id: string, single: boolean): Promise<{ ok: boolean }> {
+  const r = await fetch(`${BASE}/jobs/${id}/single`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ single }),
+  })
+  if (!r.ok) throw new Error(`single ${r.status}`)
+  return r.json()
+}
+
 export async function reprocessJob(id: string): Promise<{ ok: boolean }> {
   const r = await fetch(`${BASE}/jobs/${id}/reprocess`, { method: 'POST' })
   if (!r.ok) throw new Error(`reprocess ${r.status}`)

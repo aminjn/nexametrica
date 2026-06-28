@@ -13,7 +13,7 @@ export function Tactical({ e, v }: PageProps) {
   const L = (f: string, en: string) => (fa ? f : en)
   const job = useLatestPhysicalJob()
   const rr = (job as any)?.result || {}
-  const single = !!rr.single_team
+  const single = !!rr.single_team || !!(job as any)?.single_override
   const hasReal = !!(rr.pitch_heatmap_a || rr.pitch_heatmap)
   const colorOf = (i: number) => rr.teams?.[i]?.color || (i === 0 ? '#4f86ff' : '#ff5a5a')
 

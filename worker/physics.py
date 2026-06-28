@@ -177,7 +177,7 @@ def speed_profile(series, max_speed=MAX_SPEED):
     return zones, sprints
 
 
-def summarise_players(players, min_seconds=5.0):
+def summarise_players(players, min_seconds=12.0):
     """Per-player stats after Re-ID stitching. players: [{player, team, tracks,
     points:[(t,x,y)...]}]. Returns per-player + per-team rollup + player_count."""
     out = []

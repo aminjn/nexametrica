@@ -17,7 +17,7 @@ Pure / dependency-free so it can be unit-tested without a GPU or video.
 """
 from math import hypot
 
-MAX_GAP_S = 3.0       # max time gap between two tracks of the same player
+MAX_GAP_S = 4.5       # max time gap between two tracks of the same player
 MAX_SPEED = 10.0      # m/s — reachability bound during the gap
 POS_SLACK_M = 3.0     # tolerance on top of speed*gap
 COLOR_MAX = 30.0      # max Lab colour distance to still be "same shirt"

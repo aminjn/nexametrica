@@ -91,8 +91,10 @@ def track_metrics(series, max_speed=MAX_SPEED, win_sec=0.6):
             continue
         dist += d
     secs = series[-1][0] - series[0][0]
-    mx = _peak_speed(series, win_sec, max_speed)     # windowed → realistic peak
     avg = (dist / secs) if secs > 0 else 0.0
+    mx = _peak_speed(series, win_sec, max_speed)     # windowed → realistic peak
+    if mx <= 0:                                       # sparse track → floor at avg
+        mx = avg
     return dist, avg, mx, secs
 
 
@@ -211,6 +213,8 @@ def summarise_players(players, min_seconds=12.0):
             if secs >= 3.0:
                 team_top[team] = max(team_top[team], mx)
     out.sort(key=lambda r: r["distance_m"], reverse=True)
+    for i, p in enumerate(out):       # clean sequential rank (1..N), not raw track id
+        p["player"] = i + 1
     teams = []
     for k in (0, 1):
         if team_n[k]:

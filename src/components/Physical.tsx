@@ -96,11 +96,14 @@ export function Physical({ v, job }: { v: Record<string, any>; job: any }) {
             {phys.players.slice(0, 12).map((p: any) => (
               <div key={p.player} style={css('display:flex;align-items:center;gap:9px;background:var(--bg2);border:1px solid var(--bd);border-radius:8px;padding:7px 11px')}>
                 <span style={css(`width:10px;height:10px;border-radius:3px;flex-shrink:0;background:${p.team === -1 ? 'var(--mut)' : colorOf(p.team)};border:1px solid rgba(255,255,255,.2)`)}></span>
-                <span style={css('font-size:11.5px;font-weight:700;width:54px;display:inline-flex;align-items:center')}>
+                <span style={css('font-size:11.5px;font-weight:700;width:78px;display:inline-flex;align-items:center;gap:6px')}>
                   {p.number ? (
-                    <span style={css('min-width:22px;height:22px;padding:0 5px;border-radius:6px;background:var(--ac);color:#0d0f12;font-weight:800;display:inline-flex;align-items:center;justify-content:center;font-size:12px')} title={L('شماره‌ی پیراهن', 'Jersey number')}>{faN(p.number)}</span>
+                    <>
+                      <span style={css('min-width:22px;height:22px;padding:0 5px;border-radius:6px;background:var(--ac);color:#0d0f12;font-weight:800;display:inline-flex;align-items:center;justify-content:center;font-size:12px')} title={L('شماره‌ی پیراهن', 'Jersey number')}>{faN(p.number)}</span>
+                      <span style={css('font-size:9.5px;color:var(--ac)')}>{L('پیراهن', 'shirt')}</span>
+                    </>
                   ) : (
-                    <span style={css('min-width:22px;height:22px;border-radius:6px;border:1px dashed var(--bd2);color:var(--mut);display:inline-flex;align-items:center;justify-content:center;font-size:13px')} title={L('شماره ناشناس', 'Unknown number')}>—</span>
+                    <span style={css('color:var(--mut)')} title={L('شماره خوانده نشد', 'number not read')}>{L('بازیکن', 'P')} {faN(p.player)}</span>
                   )}
                 </span>
                 <div style={css('flex:1;height:6px;background:var(--raised);border-radius:4px;overflow:hidden')}>

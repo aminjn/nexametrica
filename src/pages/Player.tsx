@@ -1,15 +1,71 @@
 import { Box } from '../components/Box'
 import { css } from '../lib/css'
 import type { PageProps } from './types'
+import { useLatestPhysicalJob } from '../lib/useLatestJob'
+import { eng } from '../engine'
 
 // Ported from prototype lines 341–414. vm = v.vm (engine.vm_player()).
+// Top block is REAL — the Re-ID players from the latest analysed video.
 export function Player({ e, v }: PageProps) {
   const t = v.t
   const vm = v.vm
+  const fa = v.lang === 'fa'
+  const L = (f: string, en: string) => (fa ? f : en)
+  const faN = (s: any) => (eng as any).faN(s)
+  const job = useLatestPhysicalJob()
+  const players = (job as any)?.result?.physical?.players as any[] | undefined
+  const single = !!(job as any)?.result?.single_team || !!(job as any)?.single_override
+  const teamsMeta = (job as any)?.result?.teams || []
+  const colorOf = (i: number) => teamsMeta[i]?.color || (i === 0 ? '#4f86ff' : '#ff5a5a')
+
   return (
+    <div style={css('max-width:1320px;margin:0 auto')}>
+      {players?.length ? (
+        <div style={css('background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:18px;margin-bottom:16px')}>
+          <div style={css('display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap')}>
+            <span style={css('background:var(--aid);color:var(--ai);font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px')}>{L('داده‌ی واقعی', 'Real data')}</span>
+            <div style={css('font-weight:800;font-size:15px')}>{L('بازیکنانِ آخرین آنالیز', 'Players from latest analysis')}</div>
+            <span style={css('font-size:11.5px;color:var(--mut)')}>· {(job as any).name}</span>
+          </div>
+          <div style={css('display:flex;font-size:11px;color:var(--mut);font-weight:700;padding:0 10px 8px')}>
+            <span style={css('width:84px')}>{L('بازیکن', 'Player')}</span>
+            {!single ? <span style={css('width:54px')}>{L('تیم', 'Team')}</span> : null}
+            <span style={css('flex:1;text-align:center')}>{L('مسافت', 'Distance')}</span>
+            <span style={css('width:90px;text-align:center')}>{L('بیشینه سرعت', 'Top speed')}</span>
+            <span style={css('width:74px;text-align:center')}>{L('زمان', 'Time')}</span>
+          </div>
+          <div style={css('display:flex;flex-direction:column;gap:3px;max-height:430px;overflow:auto')}>
+            {players.map((p: any) => (
+              <Box key={p.player} css="display:flex;align-items:center;font-size:12.5px;padding:8px 10px;border-radius:8px;background:var(--bg2)" hover="background:var(--card2)">
+                <span style={css('width:84px;display:inline-flex;align-items:center;gap:6px')}>
+                  {p.number ? (
+                    <span style={css('min-width:22px;height:22px;padding:0 5px;border-radius:6px;background:var(--ac);color:#0d0f12;font-weight:800;display:inline-flex;align-items:center;justify-content:center;font-size:12px')}>{faN(p.number)}</span>
+                  ) : (
+                    <span style={css('color:var(--mut);font-weight:700')}>{L('بازیکن', 'P')} {faN(p.player)}</span>
+                  )}
+                </span>
+                {!single ? (
+                  <span style={css('width:54px')}><span style={css(`width:12px;height:12px;border-radius:3px;display:inline-block;background:${p.team === -1 ? 'var(--mut)' : colorOf(p.team)}`)}></span></span>
+                ) : null}
+                <span style={css('flex:1;text-align:center;font-weight:700')}>{p.distance_m >= 1000 ? `${faN((p.distance_m / 1000).toFixed(2))} ${L('کم', 'km')}` : `${faN(Math.round(p.distance_m))} ${L('م', 'm')}`}</span>
+                <span style={css('width:90px;text-align:center;font-family:monospace')}>{faN(p.max_speed_kmh)} {L('ک/س', 'km/h')}</span>
+                <span style={css('width:74px;text-align:center;color:var(--mut)')}>{faN(Math.round(p.seconds))}{L('ث', 's')}</span>
+              </Box>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div style={css('background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px;margin-bottom:16px;font-size:12.5px;color:var(--mut);line-height:1.8')}>
+          {L('هنوز بازیکنِ واقعی‌ای نیست. یک ویدیو در «کتابخانه ویدیو» آنالیز کن. نمونه‌ی زیر دموی طراحی است.',
+            'No real players yet. Analyse a video in “Video Library”. The sample below is a design demo.')}
+        </div>
+      )}
+      <div style={css('display:flex;align-items:center;gap:8px;margin-bottom:10px')}>
+        <span style={css('background:var(--bd2);color:var(--mut);font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px')}>{L('نمونه‌ی طراحی', 'Design sample')}</span>
+      </div>
     <div
       style={css(
-        'max-width:1320px;margin:0 auto;display:grid;grid-template-columns:1fr 312px;gap:16px',
+        'display:grid;grid-template-columns:1fr 312px;gap:16px',
       )}
     >
       <div>
@@ -266,6 +322,7 @@ export function Player({ e, v }: PageProps) {
           </div>
         </div>
       </div>
+    </div>
     </div>
   )
 }

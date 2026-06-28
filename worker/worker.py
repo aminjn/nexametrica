@@ -257,8 +257,12 @@ def process_video(path: str, progress=None) -> dict:
               f"{len(track_xy_m)} tracks with real positions", flush=True)
 
     # ---- team separation by jersey colour (KMeans on per-track median Lab) ----
+    # If the two colour clusters are too close, it's a single kit (e.g. a training
+    # session) — don't fake an A/B split.
+    TEAM_SPLIT_MIN = 26.0   # min Lab distance between the two kit colours
     teams = None
     heat_a = heat_b = None
+    single_team = False
     tid2team = {}
     try:
         tids = [t for t in track_cols if len(track_cols[t]) >= 2]
@@ -267,21 +271,34 @@ def process_video(path: str, progress=None) -> dict:
             crit = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 20, 1.0)
             _, labels, centers = cv2.kmeans(feats, 2, None, crit, 6, cv2.KMEANS_PP_CENTERS)
             labels = labels.flatten()
-            tid2team = {t: int(lb) for t, lb in zip(tids, labels)}
-            th = [np.zeros((GRID_H, GRID_W), dtype=np.int64), np.zeros((GRID_H, GRID_W), dtype=np.int64)]
-            det_per = [0, 0]
-            for t, lb in zip(tids, labels):
-                th[lb] += track_heat[t]
-                det_per[lb] += int(track_heat[t].sum())
-            teams = [
-                {
-                    "color": _lab_to_hex(centers[k]),
-                    "tracks": int((labels == k).sum()),
-                    "players_avg": round(det_per[k] / max(1, frames), 1),
-                }
-                for k in range(2)
-            ]
-            heat_a, heat_b = th[0].tolist(), th[1].tolist()
+            sep = float(np.linalg.norm(centers[0] - centers[1]))
+            if sep < TEAM_SPLIT_MIN:
+                # one kit → single group, no A/B
+                single_team = True
+                tid2team = {t: 0 for t in tids}
+                th0 = np.zeros((GRID_H, GRID_W), dtype=np.int64)
+                for t in tids:
+                    th0 += track_heat[t]
+                teams = [{"color": _lab_to_hex(np.mean(centers, axis=0)),
+                          "tracks": len(tids),
+                          "players_avg": round(sum(int(track_heat[t].sum()) for t in tids) / max(1, frames), 1)}]
+                heat_a, heat_b = th0.tolist(), None
+            else:
+                tid2team = {t: int(lb) for t, lb in zip(tids, labels)}
+                th = [np.zeros((GRID_H, GRID_W), dtype=np.int64), np.zeros((GRID_H, GRID_W), dtype=np.int64)]
+                det_per = [0, 0]
+                for t, lb in zip(tids, labels):
+                    th[lb] += track_heat[t]
+                    det_per[lb] += int(track_heat[t].sum())
+                teams = [
+                    {
+                        "color": _lab_to_hex(centers[k]),
+                        "tracks": int((labels == k).sum()),
+                        "players_avg": round(det_per[k] / max(1, frames), 1),
+                    }
+                    for k in range(2)
+                ]
+                heat_a, heat_b = th[0].tolist(), th[1].tolist()
     except Exception:
         teams = None
 
@@ -302,7 +319,8 @@ def process_video(path: str, progress=None) -> dict:
                     if lb in (0, 1):
                         pheat_t[lb][gy, gx] += 1
             pitch_heat = pheat.tolist()
-            pitch_heat_a, pitch_heat_b = pheat_t[0].tolist(), pheat_t[1].tolist()
+            pitch_heat_a = pheat_t[0].tolist()
+            pitch_heat_b = None if single_team else pheat_t[1].tolist()
             # Re-ID: stitch fragmented tracks into players, then per-player stats.
             import reid
             tracklets = []
@@ -378,6 +396,7 @@ def process_video(path: str, progress=None) -> dict:
         "heatmap_a": heat_a,
         "heatmap_b": heat_b,
         "teams": teams,
+        "single_team": single_team,
         "grid": {"w": GRID_W, "h": GRID_H},
         "points": points,
         "keyframe": keyframe,

@@ -225,7 +225,7 @@ export function VideoJobs({ v }: { v: Record<string, any> }) {
                           >
                             <span style={css(`width:13px;height:13px;border-radius:4px;background:${tm.color};border:1px solid rgba(255,255,255,.25)`)}></span>
                             <span style={css('font-size:12px;font-weight:700')}>
-                              {L('تیم', 'Team')} {ti === 0 ? 'A' : 'B'}
+                              {r.single_team ? L('بازیکنان', 'Players') : `${L('تیم', 'Team')} ${ti === 0 ? 'A' : 'B'}`}
                             </span>
                             <span style={css('font-size:11px;color:var(--mut)')}>
                               {L('میانگین', 'avg')} {faN(tm.players_avg)} {L('بازیکن', 'players')}

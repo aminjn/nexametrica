@@ -14,6 +14,7 @@ export function Physical({ v, job }: { v: Record<string, any>; job: any }) {
   const faN = (s: any) => (eng as any).faN(s)
   const r = job.result || {}
   const phys = r.physical
+  const single = !!r.single_team
   const teamsMeta = r.teams || []
   const colorOf = (i: number) => teamsMeta[i]?.color || (i === 0 ? '#4f86ff' : '#ff5a5a')
 
@@ -61,7 +62,7 @@ export function Physical({ v, job }: { v: Record<string, any>; job: any }) {
             <div key={tm.team} style={css('background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:11px 12px')}>
               <div style={css('display:flex;align-items:center;gap:7px;margin-bottom:8px')}>
                 <span style={css(`width:12px;height:12px;border-radius:4px;background:${colorOf(tm.team)};border:1px solid rgba(255,255,255,.25)`)}></span>
-                <span style={css('font-size:12.5px;font-weight:800')}>{L('تیم', 'Team')} {tm.team === 0 ? 'A' : 'B'}</span>
+                <span style={css('font-size:12.5px;font-weight:800')}>{single ? L('همه‌ی بازیکنان', 'All players') : `${L('تیم', 'Team')} ${tm.team === 0 ? 'A' : 'B'}`}</span>
               </div>
               <div style={css('display:grid;grid-template-columns:1fr 1fr;gap:8px')}>
                 <Stat lab={L('بیشینه سرعت', 'Top speed')} val={`${faN(tm.top_speed_kmh)} ${L('کیلومتر/ساعت', 'km/h')}`} />

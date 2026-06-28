@@ -97,7 +97,8 @@ def stitch(tracklets, max_gap=MAX_GAP_S, max_speed=MAX_SPEED):
     for i, c in enumerate(sorted(final, key=lambda c: -len(c["points"]))):
         c["points"].sort(key=lambda p: p[0])
         players.append({"player": i + 1, "team": c["team"], "number": c["number"],
-                        "tracks": len(c["members"]), "points": c["points"]})
+                        "tracks": len(c["members"]), "members": list(c["members"]),
+                        "points": c["points"]})
     return players
 
 

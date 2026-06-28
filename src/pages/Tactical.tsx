@@ -3,6 +3,8 @@ import { css } from '../lib/css'
 import type { PageProps } from './types'
 import { useLatestPhysicalJob } from '../lib/useLatestJob'
 import { Heatmap } from '../components/Heatmap'
+import { PassNetwork } from '../components/PassNetwork'
+import { eng } from '../engine'
 
 // Ported from prototype lines 468–519. vm = v.vm (engine.vm_tactical()).
 // Top block is REAL — the latest analysed video's true top-down pitch heatmap.
@@ -42,9 +44,28 @@ export function Tactical({ e, v }: PageProps) {
           )}
         </div>
       ) : null}
+
+      {/* real passing network + pass counts */}
+      {job && rr.physical?.passes?.total > 0 && rr.teams && !single ? (
+        <div style={css('background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:18px;margin-bottom:16px')}>
+          <div style={css('display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap')}>
+            <span style={css('background:var(--aid);color:var(--ai);font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px')}>{L('داده‌ی واقعی', 'Real data')}</span>
+            <div style={css('font-weight:800;font-size:14px')}>{L('شبکه‌ی پاس', 'Passing network')}</div>
+          </div>
+          <div style={css('font-size:11.5px;color:var(--mut);margin-bottom:14px')}>
+            {L(`پاسِ موفق — تیم A: ${(eng as any).faN(rr.physical.passes.a)} · تیم B: ${(eng as any).faN(rr.physical.passes.b)} (از روی توالیِ مالکیتِ توپ)`,
+               `Completed passes — Team A: ${rr.physical.passes.a} · Team B: ${rr.physical.passes.b} (from ball-possession sequence)`)}
+          </div>
+          <div style={css('display:grid;grid-template-columns:1fr 1fr;gap:14px')}>
+            <PassNetwork nodes={rr.physical.passes.nodes || []} edges={rr.physical.passes.edges || []} team={0} color={colorOf(0)} label={L('تیم A', 'Team A')} />
+            <PassNetwork nodes={rr.physical.passes.nodes || []} edges={rr.physical.passes.edges || []} team={1} color={colorOf(1)} label={L('تیم B', 'Team B')} />
+          </div>
+        </div>
+      ) : null}
+
       <div style={css('display:flex;align-items:center;gap:8px;margin-bottom:10px')}>
         <span style={css('background:var(--bd2);color:var(--mut);font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px')}>{L('نمونه‌ی طراحی', 'Design sample')}</span>
-        <span style={css('font-size:11px;color:var(--mut)')}>{L('شبکه‌ی پاس و کنترلِ فضا به‌زودی واقعی می‌شوند', 'Passing network & pitch control become real soon')}</span>
+        <span style={css('font-size:11px;color:var(--mut)')}>{L('کنترلِ فضا و معیارهای پیشرفته به‌زودی', 'Pitch control & advanced metrics soon')}</span>
       </div>
       <div
         style={css(

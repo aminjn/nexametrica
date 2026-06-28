@@ -134,6 +134,7 @@ def process_video(path: str, progress=None) -> dict:
     track_pts = defaultdict(list)      # per-track normalized image points (for calibration)
     ball_pts, track_ids, players_per = [], set(), []
     poss_by_tid = defaultdict(int)     # track -> frames it held the ball
+    owner_seq = []                     # (t_sec, owner_tid) at each ball-owned frame
     ball_count, frames, idx = 0, 0, -1
     # Keep the best "wide tactical" frame per time-segment, so the UI can offer
     # several clean candidates from different moments (not one auto-pick that may
@@ -274,6 +275,8 @@ def process_video(path: str, progress=None) -> dict:
                     od, owner = d, ti
             if owner is not None and od ** 0.5 < 0.06 * max(W, H):
                 poss_by_tid[owner] += 1
+                if not owner_seq or owner_seq[-1][1] != owner:
+                    owner_seq.append((t_sec, owner))
 
         frames += 1
         if progress and frames % 30 == 0:
@@ -385,6 +388,47 @@ def process_video(path: str, progress=None) -> dict:
             physical["numbered"] = len(track_number)
             print(f"re-id: {len(track_xy_m)} tracks -> {physical['player_count']} players "
                   f"({len(track_number)} with jersey numbers)", flush=True)
+
+            # ---- pass detection + passing network (from the ball-owner sequence) ----
+            try:
+                track2player = {}
+                node_info = {}      # player_id -> {team, number, sx, sy, label}
+                for p in players:
+                    pid = p["player"]
+                    for tid in p.get("members", []):
+                        track2player[tid] = pid
+                    pts = p.get("points") or []
+                    if pts:
+                        sx = sum(q[1] for q in pts) / len(pts) / max(1e-3, plen)
+                        sy = sum(q[2] for q in pts) / len(pts) / max(1e-3, pwid)
+                        node_info[pid] = {"team": int(p["team"]), "number": p.get("number"),
+                                          "x": round(min(1, max(0, sx)), 3),
+                                          "y": round(min(1, max(0, sy)), 3)}
+                # collapse owner sequence into possession segments, detect transfers
+                segs = []
+                for (t, o) in owner_seq:
+                    if segs and segs[-1] == o:
+                        continue
+                    segs.append(o)
+                pass_ct = [0, 0]
+                edges = defaultdict(int)
+                for o0, o1 in zip(segs, segs[1:]):
+                    t0, t1 = tid2team.get(o0, -1), tid2team.get(o1, -1)
+                    if o0 != o1 and t0 == t1 and t0 in (0, 1):
+                        pa, pb = track2player.get(o0), track2player.get(o1)
+                        if pa and pb and pa != pb:
+                            edges[(pa, pb)] += 1
+                        pass_ct[t0] += 1
+                net_nodes = [{"id": pid, **info} for pid, info in node_info.items()]
+                net_edges = [{"from": a, "to": b, "count": c, "team": node_info.get(a, {}).get("team", -1)}
+                             for (a, b), c in edges.items() if c >= 1]
+                net_edges.sort(key=lambda e: -e["count"])
+                physical["passes"] = {"a": pass_ct[0], "b": pass_ct[1],
+                                      "total": pass_ct[0] + pass_ct[1],
+                                      "nodes": net_nodes, "edges": net_edges[:120]}
+                print(f"passes: A {pass_ct[0]} / B {pass_ct[1]}, {len(net_edges)} network links", flush=True)
+            except Exception as e:
+                print("pass detection failed:", e, flush=True)
         except Exception as e:
             print("physics failed:", e, flush=True)
             physical = None

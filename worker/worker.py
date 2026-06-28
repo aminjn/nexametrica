@@ -411,14 +411,19 @@ def process_video(path: str, progress=None) -> dict:
                         continue
                     segs.append(o)
                 pass_ct = [0, 0]
+                loss_ct = [0, 0]          # turnovers: ball lost to the other team
                 edges = defaultdict(int)
                 for o0, o1 in zip(segs, segs[1:]):
                     t0, t1 = tid2team.get(o0, -1), tid2team.get(o1, -1)
-                    if o0 != o1 and t0 == t1 and t0 in (0, 1):
+                    if o0 == o1:
+                        continue
+                    if t0 == t1 and t0 in (0, 1):
                         pa, pb = track2player.get(o0), track2player.get(o1)
                         if pa and pb and pa != pb:
                             edges[(pa, pb)] += 1
                         pass_ct[t0] += 1
+                    elif t0 in (0, 1) and t1 in (0, 1):
+                        loss_ct[t0] += 1     # t0 lost it, t1 recovered it
                 # keep only players actually involved in passes — the real ~11,
                 # not the 100+ fragments — top by pass involvement per team.
                 deg = defaultdict(int)
@@ -438,9 +443,14 @@ def process_video(path: str, progress=None) -> dict:
                 net_edges = [{"from": a, "to": b, "count": c, "team": node_info.get(a, {}).get("team", -1)}
                              for (a, b), c in edges.items() if a in keep and b in keep]
                 net_edges.sort(key=lambda e: -e["count"])
-                physical["passes"] = {"a": pass_ct[0], "b": pass_ct[1],
-                                      "total": pass_ct[0] + pass_ct[1],
-                                      "nodes": net_nodes, "edges": net_edges[:80]}
+                def _acc(p, l):
+                    return round(100 * p / (p + l)) if (p + l) else None
+                physical["passes"] = {
+                    "a": pass_ct[0], "b": pass_ct[1], "total": pass_ct[0] + pass_ct[1],
+                    "acc_a": _acc(pass_ct[0], loss_ct[0]), "acc_b": _acc(pass_ct[1], loss_ct[1]),
+                    "recov_a": loss_ct[1], "recov_b": loss_ct[0],   # B's losses = A's recoveries
+                    "nodes": net_nodes, "edges": net_edges[:80],
+                }
                 print(f"passes: A {pass_ct[0]} / B {pass_ct[1]}, {len(net_edges)} network links", flush=True)
             except Exception as e:
                 print("pass detection failed:", e, flush=True)

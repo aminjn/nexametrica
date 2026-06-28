@@ -14,7 +14,7 @@
 git clone https://github.com/aminjn/nexametrica.git ~/nexametrica   # اگر نداری
 cd ~/nexametrica/worker
 bash setup-worker.sh
-nano .env        # API_BASE=https://mt.nexxaai.ir/api
+nano .env        # API_BASE=https://nexametrica.ir/api
 ```
 
 ## استفاده

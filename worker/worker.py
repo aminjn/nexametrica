@@ -29,7 +29,7 @@ def _env(key: str, default: str) -> str:
     return v.strip()
 
 
-API_BASE = _env("API_BASE", "https://mt.nexxaai.ir/api").rstrip("/")
+API_BASE = _env("API_BASE", "https://nexametrica.ir/api").rstrip("/")
 WORKER_TOKEN = _env("WORKER_TOKEN", "")
 MODEL = _env("MODEL", "yolo11m.pt")
 CONF = float(_env("CONF", "0.3"))

@@ -419,13 +419,28 @@ def process_video(path: str, progress=None) -> dict:
                         if pa and pb and pa != pb:
                             edges[(pa, pb)] += 1
                         pass_ct[t0] += 1
-                net_nodes = [{"id": pid, **info} for pid, info in node_info.items()]
+                # keep only players actually involved in passes — the real ~11,
+                # not the 100+ fragments — top by pass involvement per team.
+                deg = defaultdict(int)
+                for (a, b), c in edges.items():
+                    deg[a] += c
+                    deg[b] += c
+                by_team = {0: [], 1: []}
+                for pid, d in deg.items():
+                    tm = node_info.get(pid, {}).get("team", -1)
+                    if tm in (0, 1):
+                        by_team[tm].append(pid)
+                keep = set()
+                for tm in (0, 1):
+                    by_team[tm].sort(key=lambda p: -deg[p])
+                    keep.update(by_team[tm][:14])
+                net_nodes = [{"id": pid, **node_info[pid]} for pid in keep if pid in node_info]
                 net_edges = [{"from": a, "to": b, "count": c, "team": node_info.get(a, {}).get("team", -1)}
-                             for (a, b), c in edges.items() if c >= 1]
+                             for (a, b), c in edges.items() if a in keep and b in keep]
                 net_edges.sort(key=lambda e: -e["count"])
                 physical["passes"] = {"a": pass_ct[0], "b": pass_ct[1],
                                       "total": pass_ct[0] + pass_ct[1],
-                                      "nodes": net_nodes, "edges": net_edges[:120]}
+                                      "nodes": net_nodes, "edges": net_edges[:80]}
                 print(f"passes: A {pass_ct[0]} / B {pass_ct[1]}, {len(net_edges)} network links", flush=True)
             except Exception as e:
                 print("pass detection failed:", e, flush=True)

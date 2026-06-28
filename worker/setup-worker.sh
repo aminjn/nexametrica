@@ -29,6 +29,10 @@ echo "▶ نصب کتابخانه‌های بینایی ماشین (ultralytics/
 echo "▶ دانلودِ یک‌باره‌ی مدلِ زمین (فقط یک فایل، بدونِ هیچ API/اکانت)…"
 bash download-pitch-model.sh || echo "⚠ مدلِ زمین دانلود نشد — بعداً دستی: bash download-pitch-model.sh"
 
+echo "▶ نصبِ خواندنِ شماره‌ی پیراهن (اختیاری: easyocr)…"
+# اگر نصب نشد، ورکر بدونِ شماره‌خوانی کار می‌کند (JERSEY=0).
+.venv/bin/pip install easyocr || echo "⚠ نصبِ easyocr ناموفق — با JERSEY=0 ادامه بده."
+
 [ -f .env ] || cp .env.example .env
 
 echo "▶ تست GPU:"

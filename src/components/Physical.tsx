@@ -96,7 +96,15 @@ export function Physical({ v, job }: { v: Record<string, any>; job: any }) {
             {phys.players.slice(0, 12).map((p: any) => (
               <div key={p.player} style={css('display:flex;align-items:center;gap:9px;background:var(--bg2);border:1px solid var(--bd);border-radius:8px;padding:7px 11px')}>
                 <span style={css(`width:10px;height:10px;border-radius:3px;flex-shrink:0;background:${p.team === -1 ? 'var(--mut)' : colorOf(p.team)};border:1px solid rgba(255,255,255,.2)`)}></span>
-                <span style={css('font-size:11.5px;font-weight:700;width:60px')}>{L('بازیکن', 'P')} {faN(p.player)}</span>
+                <span style={css('font-size:11.5px;font-weight:700;width:60px')}>
+                  {p.number ? (
+                    <span style={css('display:inline-flex;align-items:center;gap:5px')}>
+                      <span style={css('min-width:20px;height:20px;padding:0 5px;border-radius:5px;background:var(--ac);color:#0d0f12;font-weight:800;display:inline-flex;align-items:center;justify-content:center;font-size:11px')}>{faN(p.number)}</span>
+                    </span>
+                  ) : (
+                    <span style={css('color:var(--mut)')}>{L('بازیکن', 'P')} {faN(p.player)}</span>
+                  )}
+                </span>
                 <div style={css('flex:1;height:6px;background:var(--raised);border-radius:4px;overflow:hidden')}>
                   <div style={css(`height:100%;border-radius:4px;background:${p.team === -1 ? 'var(--mut)' : colorOf(p.team)};width:${Math.min(100, (p.distance_m / (phys.players[0].distance_m || 1)) * 100)}%`)}></div>
                 </div>

@@ -39,6 +39,8 @@ DEVICE = _env("DEVICE", "0")           # "0" for GPU, "cpu" otherwise
 GRID_W, GRID_H = 32, 20
 PITCH = _env("PITCH", "0") not in ("0", "false", "no", "")  # auto per-frame calibration (opt-in)
 PITCH_EVERY = int(_env("PITCH_EVERY", "2"))   # run pitch model every Nth processed frame
+JERSEY = _env("JERSEY", "0") not in ("0", "false", "no", "")  # jersey-number OCR (opt-in)
+JERSEY_EVERY = int(_env("JERSEY_EVERY", "6")) # run OCR every Nth processed frame
 PGRID_W, PGRID_H = 52, 34               # pitch-space heatmap (~2 m cells over 105x68)
 
 PERSON, BALL = 0, 32  # COCO class ids
@@ -158,6 +160,17 @@ def process_video(path: str, progress=None) -> dict:
             print("pitch import failed:", e, flush=True)
             pitch_ok = False
 
+    # ---- optional jersey-number OCR ----
+    jersey_ok = False
+    track_nums = defaultdict(lambda: defaultdict(float))   # track -> {number: cum_conf}
+    if JERSEY:
+        try:
+            import jersey as jersey_mod
+            jersey_ok = jersey_mod.available()
+        except Exception as e:
+            print("jersey import failed:", e, flush=True)
+            jersey_ok = False
+
     while True:
         if not cap.grab():
             break
@@ -214,6 +227,11 @@ def process_video(path: str, progress=None) -> dict:
                     col = _jersey_lab(frame, xyxy)
                     if col is not None:
                         track_cols[ti].append(col)
+                # jersey number OCR — vote per track until confident enough
+                if jersey_ok and frames % JERSEY_EVERY == 0 and sum(track_nums[ti].values()) < 8:
+                    rn = jersey_mod.read_number(frame, xyxy)
+                    if rn is not None:
+                        track_nums[ti][rn[0]] += rn[1]
                 # real pitch position from the feet (bottom-centre of the box)
                 if cur_H is not None:
                     pm = pitch_mod.project(cur_H, float(cx), float(xyxy[3]))
@@ -322,6 +340,13 @@ def process_video(path: str, progress=None) -> dict:
             pitch_heat = pheat.tolist()
             pitch_heat_a = pheat_t[0].tolist()
             pitch_heat_b = None if single_team else pheat_t[1].tolist()
+            # resolve a jersey number per track (confidence-weighted majority vote)
+            track_number = {}
+            for ti, votes in track_nums.items():
+                if votes:
+                    num, score = max(votes.items(), key=lambda kv: kv[1])
+                    if score >= 1.5:
+                        track_number[ti] = num
             # Re-ID: stitch fragmented tracks into players, then per-player stats.
             import reid
             tracklets = []
@@ -330,12 +355,15 @@ def process_video(path: str, progress=None) -> dict:
                 if track_cols.get(tid):
                     col = [float(c) for c in np.mean(track_cols[tid], axis=0)]
                 tracklets.append({"id": int(tid), "team": tid2team.get(tid, -1),
-                                  "color": col, "points": list(series)})
+                                  "color": col, "number": track_number.get(tid),
+                                  "points": list(series)})
             players = reid.stitch(tracklets)
             physical = physics.summarise_players(players)
             physical["pitch_m"] = [round(plen, 1), round(pwid, 1)]
             physical["raw_tracks"] = len(track_xy_m)
-            print(f"re-id: {len(track_xy_m)} tracks -> {physical['player_count']} players", flush=True)
+            physical["numbered"] = len(track_number)
+            print(f"re-id: {len(track_xy_m)} tracks -> {physical['player_count']} players "
+                  f"({len(track_number)} with jersey numbers)", flush=True)
         except Exception as e:
             print("physics failed:", e, flush=True)
             physical = None

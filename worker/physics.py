@@ -197,6 +197,7 @@ def summarise_players(players, min_seconds=12.0):
         team = pl.get("team", -1)
         out.append({
             "player": pl["player"],
+            "number": pl.get("number"),
             "team": int(team),
             "tracks": pl.get("tracks", 1),
             "distance_m": round(dist, 1),

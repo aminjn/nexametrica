@@ -40,7 +40,7 @@ GRID_W, GRID_H = 32, 20
 PITCH = _env("PITCH", "0") not in ("0", "false", "no", "")  # auto per-frame calibration (opt-in)
 PITCH_EVERY = int(_env("PITCH_EVERY", "2"))   # run pitch model every Nth processed frame
 JERSEY = _env("JERSEY", "0") not in ("0", "false", "no", "")  # jersey-number OCR (opt-in)
-JERSEY_EVERY = int(_env("JERSEY_EVERY", "6")) # run OCR every Nth processed frame
+JERSEY_EVERY = int(_env("JERSEY_EVERY", "3")) # run OCR every Nth processed frame
 PGRID_W, PGRID_H = 52, 34               # pitch-space heatmap (~2 m cells over 105x68)
 
 PERSON, BALL = 0, 32  # COCO class ids

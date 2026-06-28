@@ -14,7 +14,7 @@ Works best on >=720p footage — at 360p shirt numbers are usually too small.
 import os
 
 _reader = None
-MIN_BOX_H = 44     # px; smaller player boxes can't carry a readable number
+MIN_BOX_H = 30     # px; smaller player boxes can't carry a readable number
 
 
 def available():
@@ -39,7 +39,7 @@ def load():
     return _reader
 
 
-def read_number(frame, xyxy, min_conf=0.4):
+def read_number(frame, xyxy, min_conf=0.35):
     """Return a 1-2 digit jersey number string (and its confidence) or None."""
     import cv2
     reader = load()
@@ -53,9 +53,12 @@ def read_number(frame, xyxy, min_conf=0.4):
     crop = frame[max(0, cy1):max(0, cy2), max(0, cx1):max(0, cx2)]
     if crop.size == 0:
         return None
-    crop = cv2.resize(crop, None, fx=2.5, fy=2.5, interpolation=cv2.INTER_CUBIC)
+    # preprocess: grayscale + CLAHE contrast + 3.4x upscale — helps small/blurry digits
     try:
-        res = reader.readtext(crop, allowlist="0123456789", detail=1, paragraph=False)
+        g = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
+        g = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(8, 8)).apply(g)
+        g = cv2.resize(g, None, fx=3.4, fy=3.4, interpolation=cv2.INTER_CUBIC)
+        res = reader.readtext(g, allowlist="0123456789", detail=1, paragraph=False)
     except Exception:
         return None
     best, best_c = None, 0.0

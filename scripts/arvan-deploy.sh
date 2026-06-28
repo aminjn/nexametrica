@@ -38,10 +38,13 @@ rm -f /etc/nginx/sites-enabled/default
 nginx -t
 systemctl reload nginx
 
-# اگر سرویسِ API نصب است، آن را هم ری‌استارت کن تا تغییراتِ بک‌اند اعمال شود
-if systemctl list-unit-files | grep -q '^nexametrica-api\.service'; then
-  echo "▶ ری‌استارتِ API بک‌اند…"
-  systemctl restart nexametrica-api || true
+# سرویسِ API را همیشه ری‌استارت کن تا تغییراتِ بک‌اند حتماً اعمال شود
+# (قبلاً مشروط بود و گاهی تشخیص داده نمی‌شد؛ اگر نصب نباشد بی‌ضرر است).
+echo "▶ ری‌استارتِ API بک‌اند…"
+if systemctl restart nexametrica-api 2>/dev/null; then
+  echo "  ✓ nexametrica-api ری‌استارت شد"
+else
+  echo "  (سرویسِ nexametrica-api نصب نیست — رد شد)"
 fi
 
 echo "✅ انجام شد. آدرس: http://<IP-سرور>/  (یا دامنه‌ای که در کانفیگ گذاشتی)"

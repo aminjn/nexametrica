@@ -1,13 +1,59 @@
 import { Box } from '../components/Box'
 import { css } from '../lib/css'
 import type { PageProps } from './types'
+import { useLatestPhysicalJob } from '../lib/useLatestJob'
+import { eng } from '../engine'
 
 // Ported from prototype lines 124–240. vm = v.vm (engine.vm_dashboard()).
+// Top strip is REAL — latest analysed video; the rest is a labelled design sample.
 export function Dashboard({ v }: PageProps) {
   const t = v.t
   const vm = v.vm
+  const fa = v.lang === 'fa'
+  const L = (f: string, en: string) => (fa ? f : en)
+  const faN = (s: any) => (eng as any).faN(s)
+  const job = useLatestPhysicalJob()
+  const phys = (job as any)?.result?.physical
+
+  let real: [string, string, string][] | null = null
+  if (phys?.players?.length) {
+    const totalM =
+      (phys.teams || []).reduce((s: number, tm: any) => s + (tm.distance_total_m || 0), 0) ||
+      phys.players.reduce((s: number, p: any) => s + (p.distance_m || 0), 0)
+    const top = Math.max(...phys.players.map((p: any) => p.max_speed_kmh || 0))
+    real = [
+      [L('مسافتِ کل', 'Total distance'), faN((totalM / 1000).toFixed(2)), ' km'],
+      [L('بیشینه سرعت', 'Top speed'), faN(Math.round(top * 10) / 10), ' km/h'],
+      [L('بازیکنان (Re-ID)', 'Players (Re-ID)'), faN(phys.player_count), ''],
+      [L('تعداد اسپرینت', 'Sprints'), faN(phys.sprints ?? 0), ''],
+    ]
+  }
+
   return (
     <div style={css('max-width:1320px;margin:0 auto')}>
+      {job && real ? (
+        <div style={css('margin-bottom:18px')}>
+          <div style={css('display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap')}>
+            <span style={css('background:var(--aid);color:var(--ai);font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px')}>{L('داده‌ی واقعی', 'Real data')}</span>
+            <div style={css('font-weight:800;font-size:15px')}>{L('آخرین ویدیوی آنالیزشده', 'Latest analysed video')}</div>
+            <span style={css('font-size:11.5px;color:var(--mut)')}>· {(job as any).name}</span>
+            <a href="#physical" onClick={(ev) => { ev.preventDefault(); (v as any).go?.('physical') }} style={css('font-size:11.5px;color:var(--ac);text-decoration:none;cursor:pointer')}>{L('آنالیز فیزیکی ←', 'Physical analysis →')}</a>
+          </div>
+          <div style={css('display:grid;grid-template-columns:repeat(4,1fr);gap:14px')}>
+            {real.map(([lab, val, unit], i) => (
+              <div key={i} style={css('background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px 17px')}>
+                <div style={css('font-size:11.5px;color:var(--sub);margin-bottom:9px')}>{lab}</div>
+                <div style={css('font-size:24px;font-weight:800')}>{val}<span style={css('font-size:12px;color:var(--mut);font-weight:600')}>{unit}</span></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <div style={css('display:flex;align-items:center;gap:8px;margin-bottom:12px')}>
+        <span style={css('background:var(--bd2);color:var(--mut);font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px')}>{L('نمونه‌ی طراحی', 'Design sample')}</span>
+        <span style={css('font-size:11px;color:var(--mut)')}>{L('xG/مالکیت/پرس — با تشخیصِ رویداد واقعی می‌شوند', 'xG/possession/press — become real with event detection')}</span>
+      </div>
       <div
         style={css(
           'display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap',

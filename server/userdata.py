@@ -15,6 +15,7 @@ _lock = threading.Lock()
 ALLOWED = {
     "roster", "schedule", "training", "nutrition", "scouting",
     "transfer", "clips", "sharing", "league", "integrations", "cloud",
+    "staff",
 }
 
 

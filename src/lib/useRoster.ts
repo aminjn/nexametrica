@@ -3,7 +3,11 @@
 import { useEffect, useState } from 'react'
 import { getData } from '../api'
 
-export type RosterPlayer = { id: string; number: string; name: string; position: string }
+export type RosterPlayer = {
+  id: string; number: string; name: string; position: string
+  height?: string; weight?: string                 // cm / kg
+  thigh?: string; calf?: string; chest?: string; arm?: string  // body measurements (cm)
+}
 
 export function useRoster(): Record<string, string> {
   const [map, setMap] = useState<Record<string, string>>({})

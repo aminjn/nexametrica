@@ -38,6 +38,7 @@ export type Agent = {
   group_en: string
   kind: string
   runtime: string
+  active?: boolean
   name: string
   name_en: string
   hint: string

@@ -342,21 +342,39 @@ export function AdminAiConfig({ v }: { v: Record<string, any> }) {
                 .filter((a) => (fa ? a.group : a.group_en) === g)
                 .map((a) => {
                   const rt = RUNTIME[a.runtime] || RUNTIME.api
+                  const isLLM = a.runtime === 'api'
                   const opts = (models[a.provider_id] || []).slice()
+                  const info = (
+                    <div style={css('min-width:0')}>
+                      <div style={css('font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis')}>
+                        {fa ? a.name : a.name_en}
+                      </div>
+                      <div style={css('display:flex;align-items:center;gap:7px;margin-top:3px')}>
+                        <span style={css(`font-size:9.5px;font-weight:700;color:${rt.c}`)}>{fa ? rt.fa : rt.en}</span>
+                        <span style={css('font-size:10px;color:var(--mut);font-family:monospace')}>{a.hint}</span>
+                      </div>
+                    </div>
+                  )
+                  // Vision/local agents run on the GPU worker with fixed models —
+                  // not configured from here. Show their real active/planned status.
+                  if (!isLLM) {
+                    return (
+                      <div key={a.id} style={css('display:flex;align-items:center;gap:12px;background:var(--bg2);border:1px solid var(--bd);border-radius:11px;padding:11px 13px')}>
+                        {info}
+                        <div style={css('flex:1')}></div>
+                        <span style={css('font-size:10.5px;color:var(--mut);white-space:nowrap')}>{L('روی ورکرِ Z440', 'on Z440 worker')}</span>
+                        <span style={css('font-size:10px;font-weight:700;padding:4px 10px;border-radius:20px;white-space:nowrap;' + (a.active ? 'background:rgba(74,222,128,.13);color:var(--good)' : 'background:var(--raised);color:var(--mut)'))}>
+                          {a.active ? L('● فعال', '● active') : L('به‌زودی', 'planned')}
+                        </span>
+                      </div>
+                    )
+                  }
                   return (
                     <div
                       key={a.id}
                       style={css('display:grid;grid-template-columns:1.4fr 1fr 1.2fr auto auto;gap:10px;align-items:center;background:var(--bg2);border:1px solid var(--bd);border-radius:11px;padding:11px 13px')}
                     >
-                      <div style={css('min-width:0')}>
-                        <div style={css('font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis')}>
-                          {fa ? a.name : a.name_en}
-                        </div>
-                        <div style={css('display:flex;align-items:center;gap:7px;margin-top:3px')}>
-                          <span style={css(`font-size:9.5px;font-weight:700;color:${rt.c}`)}>{fa ? rt.fa : rt.en}</span>
-                          <span style={css('font-size:10px;color:var(--mut);font-family:monospace')}>{a.hint}</span>
-                        </div>
-                      </div>
+                      {info}
                       <select
                         value={a.provider_id}
                         onChange={(e) => onProviderPick(a, (e.target as HTMLSelectElement).value)}

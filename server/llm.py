@@ -18,17 +18,15 @@ def get_providers() -> list:
     provs = s.get("providers")
     if not provs:
         provs = [dict(p) for p in catalog.DEFAULT_PROVIDERS]
-        store.save_settings({"providers": provs})
+        store.save_settings({"providers": provs, "provider_seed": catalog.PROVIDER_SEED_VERSION})
         return provs
-    # merge in any new default providers (e.g. gapgpt) without touching user data
-    have = {p.get("id") for p in provs}
-    added = False
-    for d in catalog.DEFAULT_PROVIDERS:
-        if d["id"] not in have:
-            provs.append(dict(d))
-            added = True
-    if added:
-        store.save_settings({"providers": provs})
+    # merge new defaults ONCE per seed-version bump, so user deletions stick.
+    if s.get("provider_seed", 0) < catalog.PROVIDER_SEED_VERSION:
+        have = {p.get("id") for p in provs}
+        for d in catalog.DEFAULT_PROVIDERS:
+            if d["id"] not in have:
+                provs.append(dict(d))
+        store.save_settings({"providers": provs, "provider_seed": catalog.PROVIDER_SEED_VERSION})
     return provs
 
 

@@ -34,6 +34,18 @@ DEFAULT_PROVIDERS = [
 ]
 
 # group, group_en, then agents. kind is informational; runtime drives behavior.
+# Bump when DEFAULT_PROVIDERS changes so new defaults merge ONCE (then user
+# deletions stick — we don't re-add them every call).
+PROVIDER_SEED_VERSION = 2
+
+# Agents actually implemented in the real pipeline (worker CV / LLM). The rest are
+# planned — shown honestly as "planned", not fake-configurable.
+ACTIVE_AGENTS = {
+    "object_detection", "tracking", "camera_calibration", "pitch_keypoints",
+    "reid", "jersey_ocr", "team_classification", "ball_possession",
+    "event_detection", "heatmap", "report_writer", "assistant_chat",
+}
+
 AGENTS = [
     # ---- Vision perception (self-hosted GPU) ----
     ("object_detection", "ادراک بینایی", "Vision perception", "vision", "self", "تشخیص اشیاء (بازیکن/توپ/داور/دروازه)", "Object detection", "YOLO11 / RT-DETR"),

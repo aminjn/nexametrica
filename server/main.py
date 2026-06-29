@@ -235,6 +235,7 @@ def list_agents():
         asg = assigns.get(a["id"], {})
         out.append({
             **a,
+            "active": a["id"] in catalog.ACTIVE_AGENTS,
             "provider_id": asg.get("provider_id", ""),
             "provider_name": provs.get(asg.get("provider_id", ""), ""),
             "model": asg.get("model", ""),

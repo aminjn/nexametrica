@@ -1,15 +1,43 @@
 import { Box } from '../components/Box'
 import { css } from '../lib/css'
 import type { PageProps } from './types'
+import { useLatestPhysicalJob } from '../lib/useLatestJob'
+import { TelestrationCanvas } from '../components/TelestrationCanvas'
 
 // Ported from prototype lines 416–466. vm = v.vm (engine.vm_telestration()).
+// Top block is REAL — draw arrows/lines on the latest analysed keyframe.
 export function Telestration({ e, v }: PageProps) {
   const t = v.t
   const vm = v.vm
+  const fa = v.lang === 'fa'
+  const L = (f: string, en: string) => (fa ? f : en)
+  const job = useLatestPhysicalJob()
+  const rr = (job as any)?.result || {}
+  const frame: string | undefined = rr.calibration_check || rr.keyframe || (rr.keyframes && rr.keyframes[0])
+
   return (
+    <div style={css('max-width:1320px;margin:0 auto')}>
+      {frame ? (
+        <div style={css('background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:18px;margin-bottom:16px')}>
+          <div style={css('display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap')}>
+            <span style={css('background:var(--aid);color:var(--ai);font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px')}>{L('داده‌ی واقعی', 'Real data')}</span>
+            <div style={css('font-weight:800;font-size:15px')}>{L('رسم روی فریمِ آنالیز', 'Draw on the analysed frame')}</div>
+            <span style={css('font-size:11.5px;color:var(--mut)')}>· {(job as any).name}</span>
+          </div>
+          <TelestrationCanvas src={frame} fa={fa} />
+        </div>
+      ) : (
+        <div style={css('background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px;margin-bottom:16px;font-size:12.5px;color:var(--mut);line-height:1.8')}>
+          {L('هنوز فریمِ آنالیزشده‌ای نیست. یک ویدیو آنالیز کن تا اینجا رویش رسم کنی. نمونه‌ی زیر دموی طراحی است.',
+            'No analysed frame yet. Analyse a video to draw on it. The sample below is a design demo.')}
+        </div>
+      )}
+      <div style={css('display:flex;align-items:center;gap:8px;margin-bottom:10px')}>
+        <span style={css('background:var(--bd2);color:var(--mut);font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px')}>{L('نمونه‌ی طراحی', 'Design sample')}</span>
+      </div>
     <div
       style={css(
-        'max-width:1320px;margin:0 auto;display:grid;grid-template-columns:auto 1fr;gap:16px',
+        'display:grid;grid-template-columns:auto 1fr;gap:16px',
       )}
     >
       <div
@@ -201,6 +229,7 @@ export function Telestration({ e, v }: PageProps) {
           </div>
         </div>
       </div>
+    </div>
     </div>
   )
 }

@@ -1,15 +1,33 @@
 import { Box } from '../components/Box'
 import { css } from '../lib/css'
 import type { PageProps } from './types'
+import { ManualList } from '../components/ManualList'
 
-// Ported from prototype lines 1421–1465. vm = v.vm (engine.vm_transfer()).
+// Ported from prototype lines 1421–1465. Top block is REAL — your transfer targets.
 export function Transfer({ e, v }: PageProps) {
   const t = v.t
   const vm = v.vm
+  const fa = v.lang === 'fa'
+  const L = (f: string, en: string) => (fa ? f : en)
   return (
+    <div style={css('max-width:1320px;margin:0 auto')}>
+      <ManualList
+        v={v}
+        collection="transfer"
+        title={L('اهدافِ نقل‌وانتقال', 'Transfer targets')}
+        fields={[
+          { key: 'player', ph: L('نامِ بازیکن', 'Player name') },
+          { key: 'club', ph: L('باشگاه', 'Club'), width: '170px' },
+          { key: 'value', ph: L('ارزش/قیمت', 'Value'), width: '130px' },
+          { key: 'note', ph: L('وضعیت/یادداشت', 'Status / note') },
+        ]}
+      />
+      <div style={css('display:flex;align-items:center;gap:8px;margin-bottom:10px')}>
+        <span style={css('background:var(--bd2);color:var(--mut);font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px')}>{L('نمونه‌ی طراحی', 'Design sample')}</span>
+      </div>
     <div
       style={css(
-        'max-width:1320px;margin:0 auto;display:grid;grid-template-columns:1fr 380px;gap:16px',
+        'display:grid;grid-template-columns:1fr 380px;gap:16px',
       )}
     >
       <div>
@@ -138,6 +156,7 @@ export function Transfer({ e, v }: PageProps) {
           </div>
         </div>
       </div>
+    </div>
     </div>
   )
 }

@@ -1,12 +1,30 @@
 import { css } from '../lib/css'
 import type { PageProps } from './types'
+import { ManualList } from '../components/ManualList'
 
-// Ported from prototype lines 1767–1812. vm = v.vm (engine.vm_nutrition()).
+// Ported from prototype lines 1767–1812. Top block is REAL — a persistent nutrition plan.
 export function Nutrition({ e, v }: PageProps) {
   const t = v.t
   const vm = v.vm
+  const fa = v.lang === 'fa'
+  const L = (f: string, en: string) => (fa ? f : en)
   return (
     <div style={css('max-width:1340px;margin:0 auto')}>
+      <ManualList
+        v={v}
+        collection="nutrition"
+        title={L('برنامه‌ی تغذیه', 'Nutrition plan')}
+        hint={L('per بازیکن (گرم)', 'per player (grams)')}
+        fields={[
+          { key: 'player', ph: L('بازیکن', 'Player') },
+          { key: 'protein', ph: L('پروتئین (g)', 'Protein (g)'), digits: true, width: '120px' },
+          { key: 'carbs', ph: L('کربوهیدرات (g)', 'Carbs (g)'), digits: true, width: '120px' },
+          { key: 'fat', ph: L('چربی (g)', 'Fat (g)'), digits: true, width: '110px' },
+        ]}
+      />
+      <div style={css('display:flex;align-items:center;gap:8px;margin-bottom:10px')}>
+        <span style={css('background:var(--bd2);color:var(--mut);font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px')}>{L('نمونه‌ی طراحی', 'Design sample')}</span>
+      </div>
       <div
         style={css(
           'background:linear-gradient(160deg,rgba(56,189,248,.08),var(--card) 55%);border:1px solid var(--bd);border-radius:14px;padding:15px 17px;margin-bottom:16px',

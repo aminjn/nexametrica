@@ -1,15 +1,33 @@
 import { Box } from '../components/Box'
 import { css } from '../lib/css'
 import type { PageProps } from './types'
+import { ManualList } from '../components/ManualList'
 
-// Ported from prototype lines 673–793. vm = v.vm (engine.vm_scouting()).
+// Ported from prototype lines 673–793. Top block is REAL — your scouting shortlist.
 export function Scouting({ e, v }: PageProps) {
   const t = v.t
   const vm = v.vm
+  const fa = v.lang === 'fa'
+  const L = (f: string, en: string) => (fa ? f : en)
   return (
+    <div style={css('max-width:1320px;margin:0 auto')}>
+      <ManualList
+        v={v}
+        collection="scouting"
+        title={L('لیستِ زیرِنظر (اسکاوتینگ)', 'Scouting shortlist')}
+        fields={[
+          { key: 'player', ph: L('نامِ بازیکن', 'Player name') },
+          { key: 'club', ph: L('باشگاه', 'Club'), width: '170px' },
+          { key: 'rating', ph: L('امتیاز', 'Rating'), type: 'select', width: '110px', options: [['A', 'A'], ['B', 'B'], ['C', 'C']] },
+          { key: 'note', ph: L('یادداشت', 'Note') },
+        ]}
+      />
+      <div style={css('display:flex;align-items:center;gap:8px;margin-bottom:10px')}>
+        <span style={css('background:var(--bd2);color:var(--mut);font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px')}>{L('نمونه‌ی طراحی', 'Design sample')}</span>
+      </div>
     <div
       style={css(
-        'max-width:1320px;margin:0 auto;display:grid;grid-template-columns:1fr 320px;gap:16px',
+        'display:grid;grid-template-columns:1fr 320px;gap:16px',
       )}
     >
       <div>
@@ -433,6 +451,7 @@ export function Scouting({ e, v }: PageProps) {
           </div>
         </div>
       </div>
+    </div>
     </div>
   )
 }

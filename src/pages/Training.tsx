@@ -1,13 +1,31 @@
 import { Box } from '../components/Box'
 import { css } from '../lib/css'
 import type { PageProps } from './types'
+import { ManualList } from '../components/ManualList'
 
-// Ported from prototype lines 1649–1765. vm = v.vm (engine.vm_training()).
+// Ported from prototype lines 1649–1765. Top block is REAL — a persistent training plan.
 export function Training({ e, v }: PageProps) {
   const t = v.t
   const vm = v.vm
+  const fa = v.lang === 'fa'
+  const L = (f: string, en: string) => (fa ? f : en)
   return (
     <div style={css('max-width:1340px;margin:0 auto')}>
+      <ManualList
+        v={v}
+        collection="training"
+        title={L('برنامه‌ی تمرینی', 'Training plan')}
+        hint={L('جلسات را وارد کن — ذخیره می‌ماند', 'enter sessions — persists')}
+        fields={[
+          { key: 'date', ph: L('تاریخ', 'Date'), type: 'date', width: '150px' },
+          { key: 'focus', ph: L('تمرکز (مثلاً فاز دفاعی)', 'Focus (e.g. defending)') },
+          { key: 'drill', ph: L('تمرین', 'Drill') },
+          { key: 'load', ph: L('بار', 'Load'), type: 'select', width: '120px', options: [['low', L('کم', 'Low')], ['med', L('متوسط', 'Medium')], ['high', L('زیاد', 'High')]] },
+        ]}
+      />
+      <div style={css('display:flex;align-items:center;gap:8px;margin-bottom:10px')}>
+        <span style={css('background:var(--bd2);color:var(--mut);font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px')}>{L('نمونه‌ی طراحی', 'Design sample')}</span>
+      </div>
       <div
         style={css(
           'background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:18px 20px;margin-bottom:16px',

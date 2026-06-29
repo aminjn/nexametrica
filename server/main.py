@@ -216,7 +216,11 @@ def test_provider(pid: str):
             return {"ok": False, "detail": str(e)}
     if not p.get("api_key"):
         return {"ok": False, "detail": "no api key set"}
-    model = (llm.list_models(p) or ["gpt-4o-mini"])[0]
+    mlist = llm.list_models(p) or []
+    # prefer a widely-available chat model for the connectivity test (avoid picking
+    # an alphabetically-first id the gateway may not actually serve -> 404)
+    pref = ["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini", "gpt-3.5-turbo", "gemini-2.0-flash"]
+    model = next((m for m in pref if m in mlist), None) or (mlist[0] if mlist else "gpt-4o-mini")
     cfg = {"call": p.get("call", "openai"), "base_url": p["base_url"], "api_key": p["api_key"], "model": model, "temperature": 0}
     try:
         text = llm.chat(cfg, [{"role": "user", "content": "ping؛ فقط بنویس ok"}], max_tokens=8)

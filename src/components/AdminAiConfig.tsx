@@ -46,8 +46,8 @@ export function AdminAiConfig({ v }: { v: Record<string, any> }) {
       setProviders(pp.providers)
       setAgents(aa.agents)
       setAgentProvs(aa.providers)
-      const used = new Set(aa.agents.map((a) => a.provider_id).filter(Boolean))
-      for (const pid of used) ensureModels(pid)
+      // pre-load every provider's model list so agent dropdowns are populated
+      for (const p of pp.providers) ensureModels(p.id)
     } catch {
       setMsg({ k: 'err', t: L('اتصال به سرور برقرار نشد (API بالا هست؟).', 'Could not reach the server (is the API up?).') })
     }

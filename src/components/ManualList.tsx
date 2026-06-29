@@ -1,7 +1,6 @@
 // Reusable real-data block: an add-form + persistent list + delete, backed by a
 // userdata collection. Used by the manual-entry pages (training, nutrition,
-// scouting, transfer, …). Honest "Real data" badge; the page can show its old
-// prototype below under a "design sample" label.
+// scouting, transfer, …). Real, persistent data with an honest "Real data" badge.
 import { useState } from 'react'
 import { css } from '../lib/css'
 import { Box } from './Box'

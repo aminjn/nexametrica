@@ -7,7 +7,7 @@ import { css } from '../lib/css'
 import { Heatmap } from './Heatmap'
 import { getJob } from '../api'
 import { eng } from '../engine'
-import { useRoster } from '../lib/useRoster'
+import { useRosterFull, bmiOf, bmiColor } from '../lib/useRoster'
 
 export function Physical({ v, job }: { v: Record<string, any>; job: any }) {
   const fa = v.lang === 'fa'
@@ -16,7 +16,7 @@ export function Physical({ v, job }: { v: Record<string, any>; job: any }) {
   const r = job.result || {}
   const phys = r.physical
   const single = !!r.single_team || !!(job as any).single_override
-  const roster = useRoster()
+  const roster = useRosterFull()
   const teamsMeta = r.teams || []
   const colorOf = (i: number) => teamsMeta[i]?.color || (i === 0 ? '#4f86ff' : '#ff5a5a')
 
@@ -95,26 +95,37 @@ export function Physical({ v, job }: { v: Record<string, any>; job: any }) {
             {L('بازیکنان — مسافت و سرعت (پس از Re-ID)', 'Players — distance & speed (after Re-ID)')}
           </div>
           <div style={css('display:flex;flex-direction:column;gap:4px')}>
-            {phys.players.slice(0, 12).map((p: any) => (
-              <div key={p.player} style={css('display:flex;align-items:center;gap:9px;background:var(--bg2);border:1px solid var(--bd);border-radius:8px;padding:7px 11px')}>
+            {phys.players.slice(0, 12).map((p: any) => {
+              const prof = p.number ? roster[String(p.number)] : undefined
+              const bmi = bmiOf(prof)
+              const meas = prof ? [[L('ران', 'thigh'), prof.thigh], [L('ساق', 'calf'), prof.calf], [L('سینه', 'chest'), prof.chest], [L('بازو', 'arm'), prof.arm]].filter(([, x]) => x) : []
+              return (
+              <div key={p.player} style={css('display:flex;align-items:center;gap:9px;background:var(--bg2);border:1px solid var(--bd);border-radius:8px;padding:7px 11px;flex-wrap:wrap')}>
                 <span style={css(`width:10px;height:10px;border-radius:3px;flex-shrink:0;background:${p.team === -1 ? 'var(--mut)' : colorOf(p.team)};border:1px solid rgba(255,255,255,.2)`)}></span>
-                <span style={css('font-size:11.5px;font-weight:700;width:130px;display:inline-flex;align-items:center;gap:6px;overflow:hidden')}>
+                <span style={css('font-size:11.5px;font-weight:700;width:140px;display:inline-flex;align-items:center;gap:6px;overflow:hidden')}>
                   {p.number ? (
                     <>
                       <span style={css('min-width:22px;height:22px;padding:0 5px;border-radius:6px;background:var(--ac);color:#0d0f12;font-weight:800;display:inline-flex;align-items:center;justify-content:center;font-size:12px')} title={L('شماره‌ی پیراهن', 'Jersey number')}>{faN(p.number)}</span>
-                      <span style={css('font-size:9.5px;color:var(--ac);white-space:nowrap')}>{roster[String(p.number)] || L('پیراهن', 'shirt')}</span>
+                      <span style={css('font-size:9.5px;color:var(--ac);white-space:nowrap;overflow:hidden;text-overflow:ellipsis')}>{prof?.name || L('پیراهن', 'shirt')}</span>
                     </>
                   ) : (
                     <span style={css('color:var(--mut)')} title={L('شماره خوانده نشد', 'number not read')}>{L('بازیکن', 'P')} {faN(p.player)}</span>
                   )}
                 </span>
-                <div style={css('flex:1;height:6px;background:var(--raised);border-radius:4px;overflow:hidden')}>
+                <div style={css('flex:1;min-width:80px;height:6px;background:var(--raised);border-radius:4px;overflow:hidden')}>
                   <div style={css(`height:100%;border-radius:4px;background:${p.team === -1 ? 'var(--mut)' : colorOf(p.team)};width:${Math.min(100, (p.distance_m / (phys.players[0].distance_m || 1)) * 100)}%`)}></div>
                 </div>
                 <span style={css('font-size:11.5px;font-weight:700;width:64px;text-align:end')}>{p.distance_m >= 1000 ? `${faN((p.distance_m / 1000).toFixed(2))} ${L('کم', 'km')}` : `${faN(Math.round(p.distance_m))} ${L('م', 'm')}`}</span>
                 <span style={css('font-size:11px;color:var(--mut);width:78px;text-align:end')}>{faN(p.max_speed_kmh)} {L('ک/س', 'km/h')}</span>
+                {bmi ? (
+                  <span style={css(`font-size:9.5px;font-weight:800;padding:2px 7px;border-radius:20px;color:#0d0f12;background:${bmiColor(bmi)}`)} title={L('شاخصِ تودهٔ بدنی', 'Body-mass index')}>BMI {faN(bmi)}</span>
+                ) : null}
+                {meas.length ? (
+                  <span style={css('font-size:9.5px;color:var(--mut);font-family:monospace;width:100%;padding-inline-start:19px')} title={L('اندازه‌های بدن (cm)', 'Body measurements (cm)')}>{meas.map(([k, x]) => `${k} ${faN(x)}`).join(' · ')}</span>
+                ) : null}
               </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       ) : null}

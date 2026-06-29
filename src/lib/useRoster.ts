@@ -24,3 +24,32 @@ export function useRoster(): Record<string, string> {
   }, [])
   return map
 }
+
+// Compute body-mass index from height (cm) + weight (kg), or null if missing.
+export function bmiOf(p?: { height?: string; weight?: string }): number | null {
+  if (!p) return null
+  const h = Number(p.height), w = Number(p.weight)
+  if (!h || !w) return null
+  return Math.round((w / (h / 100) ** 2) * 10) / 10
+}
+export function bmiColor(b: number): string {
+  return b < 18.5 ? 'var(--ai)' : b < 25 ? 'var(--good)' : b < 30 ? 'var(--warn)' : 'var(--dng)'
+}
+
+// Full jersey-number → RosterPlayer map, so analysis pages can show the body
+// profile (BMI / measurements) next to each detected shirt number.
+export function useRosterFull(): Record<string, RosterPlayer> {
+  const [map, setMap] = useState<Record<string, RosterPlayer>>({})
+  useEffect(() => {
+    getData<RosterPlayer[]>('roster')
+      .then((r) => {
+        if (Array.isArray(r)) {
+          setMap(Object.fromEntries(
+            r.filter((p) => p.number).map((p) => [String(p.number), p]),
+          ))
+        }
+      })
+      .catch(() => {})
+  }, [])
+  return map
+}

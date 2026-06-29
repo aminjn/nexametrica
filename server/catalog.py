@@ -10,6 +10,14 @@ Admin panel. `runtime`: api = cloud LLM/embed/asr, self = self-hosted GPU
 #   anthropic  -> Anthropic /v1/messages
 #   selfhosted -> our own GPU worker (custom); model list is manual
 DEFAULT_PROVIDERS = [
+    # GapGPT — Iranian OpenAI-compatible gateway (works from Iran, Rial billing).
+    # Just paste your key in the Super-Admin console. Models auto-load from /models
+    # when a key is set; this manual list is the fallback.
+    {"id": "gapgpt", "name": "GapGPT (گپ‌جی‌پی‌تی)", "call": "openai",
+     "base_url": "https://api.gapgpt.app/v1", "api_key": "",
+     "models": ["gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini", "o3-mini",
+                "gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash",
+                "claude-3-7-sonnet", "claude-3-5-sonnet", "deepseek-chat"]},
     {"id": "openai", "name": "OpenAI", "call": "openai",
      "base_url": "https://api.openai.com/v1", "api_key": "", "models": []},
     {"id": "gemini", "name": "Google Gemini", "call": "openai",

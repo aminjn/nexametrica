@@ -19,6 +19,16 @@ def get_providers() -> list:
     if not provs:
         provs = [dict(p) for p in catalog.DEFAULT_PROVIDERS]
         store.save_settings({"providers": provs})
+        return provs
+    # merge in any new default providers (e.g. gapgpt) without touching user data
+    have = {p.get("id") for p in provs}
+    added = False
+    for d in catalog.DEFAULT_PROVIDERS:
+        if d["id"] not in have:
+            provs.append(dict(d))
+            added = True
+    if added:
+        store.save_settings({"providers": provs})
     return provs
 
 

@@ -58,6 +58,16 @@ export async function deleteJob(id: string): Promise<{ ok: boolean }> {
   return r.json()
 }
 
+export async function renameJob(id: string, name: string): Promise<{ ok: boolean }> {
+  const r = await fetch(`${BASE}/jobs/${id}/rename`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  })
+  if (!r.ok) throw new Error(`rename ${r.status}`)
+  return r.json()
+}
+
 export async function setSingleTeam(id: string, single: boolean): Promise<{ ok: boolean }> {
   const r = await fetch(`${BASE}/jobs/${id}/single`, {
     method: 'POST',

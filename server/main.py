@@ -353,6 +353,17 @@ def reprocess_job(jid: str):
     return {"ok": True}
 
 
+@app.post("/api/jobs/{jid}/rename")
+def rename_job(jid: str, body: dict):
+    if not jobstore.get(jid):
+        raise HTTPException(status_code=404, detail="job not found")
+    name = (body.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="empty name")
+    jobstore.update(jid, name=name[:120])
+    return {"ok": True}
+
+
 @app.post("/api/jobs/{jid}/single")
 def set_single_team(jid: str, body: dict):
     """Manual override: mark a job as single-kit (training) so the UI merges A/B."""

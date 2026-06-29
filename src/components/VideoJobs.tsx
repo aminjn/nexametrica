@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { css } from '../lib/css'
 import { Box } from './Box'
-import { uploadVideo, listJobs, deleteJob, reprocessJob, setSingleTeam, type Job } from '../api'
+import { uploadVideo, listJobs, deleteJob, reprocessJob, setSingleTeam, renameJob, type Job } from '../api'
 import { eng } from '../engine'
 import { Heatmap } from './Heatmap'
 import { Calibration } from './Calibration'
@@ -54,6 +54,18 @@ export function VideoJobs({ v }: { v: Record<string, any> }) {
       await deleteJob(j.id)
     } catch {
       refresh()   // revert on failure
+    }
+  }
+
+  async function onRename(e: React.MouseEvent, j: Job) {
+    e.stopPropagation()
+    const name = window.prompt(L('عنوانِ ویدیو:', 'Video title:'), j.name)
+    if (!name || name.trim() === j.name) return
+    setJobs((js) => js.map((x) => (x.id === j.id ? ({ ...x, name: name.trim() } as Job) : x)))
+    try {
+      await renameJob(j.id, name.trim())
+    } catch {
+      refresh()
     }
   }
 
@@ -136,6 +148,14 @@ export function VideoJobs({ v }: { v: Record<string, any> }) {
         <div style={css('font-size:12px;color:var(--sub);margin-bottom:12px')}>{msg}</div>
       ) : null}
 
+      {jobs.length ? (
+        <div style={css('display:flex;gap:18px;margin-bottom:12px;font-size:11.5px')}>
+          <span><b style={css('font-size:15px')}>{faN(jobs.length)}</b> <span style={css('color:var(--mut)')}>{L('ویدیو', 'videos')}</span></span>
+          <span><b style={css('font-size:15px;color:var(--good)')}>{faN(jobs.filter((x) => x.status === 'done').length)}</b> <span style={css('color:var(--mut)')}>{L('آماده', 'ready')}</span></span>
+          <span><b style={css('font-size:15px;color:var(--ai)')}>{faN(jobs.filter((x) => x.status === 'queued' || x.status === 'processing').length)}</b> <span style={css('color:var(--mut)')}>{L('در صف/پردازش', 'queued/processing')}</span></span>
+        </div>
+      ) : null}
+
       {jobs.length === 0 ? (
         <div style={css('font-size:12.5px;color:var(--mut);padding:14px 0;text-align:center')}>
           {L('هنوز ویدیویی پردازش نشده. یک ویدیو آپلود کن یا روی Z440 با worker پردازش کن.', 'No videos yet. Upload one, or process on the Z440 worker.')}
@@ -164,8 +184,18 @@ export function VideoJobs({ v }: { v: Record<string, any> }) {
                     </svg>
                   </div>
                   <div style={css('flex:1;min-width:0')}>
-                    <div style={css('font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis')}>
-                      {j.name}
+                    <div style={css('display:flex;align-items:center;gap:6px;min-width:0')}>
+                      <span style={css('font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis')}>
+                        {j.name}
+                      </span>
+                      <Box
+                        onClick={(e: React.MouseEvent) => onRename(e, j)}
+                        css="width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--mut);cursor:pointer;flex-shrink:0"
+                        hover="background:var(--card2);color:var(--ac)"
+                        title={L('تغییرِ عنوان', 'Rename')}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
+                      </Box>
                     </div>
                     <div style={css('font-size:10.5px;color:var(--mut)')}>
                       {j.source === 'worker' ? L('پردازشِ محلی', 'local process') : L('آپلودِ سایت', 'site upload')}

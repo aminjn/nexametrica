@@ -7,6 +7,7 @@ import { css } from '../lib/css'
 import { Heatmap } from './Heatmap'
 import { getJob } from '../api'
 import { eng } from '../engine'
+import { useRoster } from '../lib/useRoster'
 
 export function Physical({ v, job }: { v: Record<string, any>; job: any }) {
   const fa = v.lang === 'fa'
@@ -15,6 +16,7 @@ export function Physical({ v, job }: { v: Record<string, any>; job: any }) {
   const r = job.result || {}
   const phys = r.physical
   const single = !!r.single_team || !!(job as any).single_override
+  const roster = useRoster()
   const teamsMeta = r.teams || []
   const colorOf = (i: number) => teamsMeta[i]?.color || (i === 0 ? '#4f86ff' : '#ff5a5a')
 
@@ -96,11 +98,11 @@ export function Physical({ v, job }: { v: Record<string, any>; job: any }) {
             {phys.players.slice(0, 12).map((p: any) => (
               <div key={p.player} style={css('display:flex;align-items:center;gap:9px;background:var(--bg2);border:1px solid var(--bd);border-radius:8px;padding:7px 11px')}>
                 <span style={css(`width:10px;height:10px;border-radius:3px;flex-shrink:0;background:${p.team === -1 ? 'var(--mut)' : colorOf(p.team)};border:1px solid rgba(255,255,255,.2)`)}></span>
-                <span style={css('font-size:11.5px;font-weight:700;width:78px;display:inline-flex;align-items:center;gap:6px')}>
+                <span style={css('font-size:11.5px;font-weight:700;width:130px;display:inline-flex;align-items:center;gap:6px;overflow:hidden')}>
                   {p.number ? (
                     <>
                       <span style={css('min-width:22px;height:22px;padding:0 5px;border-radius:6px;background:var(--ac);color:#0d0f12;font-weight:800;display:inline-flex;align-items:center;justify-content:center;font-size:12px')} title={L('شماره‌ی پیراهن', 'Jersey number')}>{faN(p.number)}</span>
-                      <span style={css('font-size:9.5px;color:var(--ac)')}>{L('پیراهن', 'shirt')}</span>
+                      <span style={css('font-size:9.5px;color:var(--ac);white-space:nowrap')}>{roster[String(p.number)] || L('پیراهن', 'shirt')}</span>
                     </>
                   ) : (
                     <span style={css('color:var(--mut)')} title={L('شماره خوانده نشد', 'number not read')}>{L('بازیکن', 'P')} {faN(p.player)}</span>

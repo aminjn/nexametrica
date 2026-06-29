@@ -1,14 +1,63 @@
-import { Fragment } from 'react'
+import { Fragment, useState } from 'react'
 import { Box } from '../components/Box'
 import { css } from '../lib/css'
 import type { PageProps } from './types'
+import { useCollection } from '../lib/useCollection'
+import type { RosterPlayer } from '../lib/useRoster'
 
-// Ported from prototype lines 1467–1576 (vm = v.vm = engine.vm_leaguedb()).
+// Ported from prototype lines 1467–1576. Top block is REAL — your team roster
+// (numbers + names) which the analysis uses to label detected shirt numbers.
 export function LeagueDB({ e, v }: PageProps) {
   const t = v.t
   const vm = v.vm
+  const fa = v.lang === 'fa'
+  const L = (f: string, en: string) => (fa ? f : en)
+  const { rows, update } = useCollection<RosterPlayer>('roster', [])
+  const [d, setD] = useState({ number: '', name: '', position: '' })
+  const INP = 'height:36px;background:var(--bg2);border:1px solid var(--bd2);border-radius:8px;color:var(--tx);font-family:inherit;font-size:12.5px;padding:0 10px;outline:none'
+
+  function add() {
+    if (!d.number || !d.name) return
+    update([...rows, { id: `${d.number}-${rows.length}`, number: d.number, name: d.name, position: d.position }])
+    setD({ number: '', name: '', position: '' })
+  }
+  const sorted = [...rows].sort((a, b) => Number(a.number) - Number(b.number))
+
   return (
     <div style={css('max-width:1340px;margin:0 auto')}>
+      <div style={css('background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:18px;margin-bottom:16px')}>
+        <div style={css('display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap')}>
+          <span style={css('background:var(--aid);color:var(--ai);font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px')}>{L('داده‌ی واقعی', 'Real data')}</span>
+          <div style={css('font-weight:800;font-size:15px')}>{L('تیمِ من — روستر', 'My team — roster')}</div>
+        </div>
+        <div style={css('font-size:11px;color:var(--mut);margin-bottom:14px;line-height:1.7')}>
+          {L('شماره و نامِ بازیکن‌ها را وارد کن؛ در آنالیز، شماره‌ی پیراهنِ خوانده‌شده به نامِ واقعی وصل می‌شود.',
+            'Enter numbers & names; in analysis, detected shirt numbers are matched to real names.')}
+        </div>
+        <div style={css('display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px')}>
+          <input placeholder={L('شماره', 'No.')} value={d.number} onChange={(ev) => setD({ ...d, number: ev.target.value.replace(/\D/g, '') })} style={css(INP + ';width:74px')} />
+          <input placeholder={L('نامِ بازیکن', 'Player name')} value={d.name} onChange={(ev) => setD({ ...d, name: ev.target.value })} style={css(INP + ';flex:1;min-width:150px')} />
+          <input placeholder={L('پست (اختیاری)', 'Position (optional)')} value={d.position} onChange={(ev) => setD({ ...d, position: ev.target.value })} style={css(INP + ';width:160px')} />
+          <button onClick={add} style={css('height:36px;padding:0 16px;background:var(--ac);border:none;border-radius:8px;color:#0d0f12;font-family:inherit;font-weight:800;font-size:12.5px;cursor:pointer')}>{L('+ افزودن', '+ Add')}</button>
+        </div>
+        {sorted.length ? (
+          <div style={css('display:grid;grid-template-columns:repeat(2,1fr);gap:5px')}>
+            {sorted.map((p) => (
+              <div key={p.id} style={css('display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--bd);border-radius:8px;padding:7px 11px')}>
+                <span style={css('min-width:24px;height:24px;border-radius:6px;background:var(--ac);color:#0d0f12;font-weight:800;display:inline-flex;align-items:center;justify-content:center;font-size:12px')}>{p.number}</span>
+                <span style={css('font-size:12.5px;font-weight:700;flex:1')}>{p.name}</span>
+                <span style={css('font-size:11px;color:var(--mut)')}>{p.position}</span>
+                <Box onClick={() => update(rows.filter((x) => x.id !== p.id))} css="width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--mut);cursor:pointer" hover="background:var(--dngd);color:var(--dng)" title={L('حذف', 'Delete')}>✕</Box>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={css('font-size:12px;color:var(--mut);text-align:center;padding:10px')}>{L('هنوز بازیکنی وارد نشده.', 'No players yet.')}</div>
+        )}
+      </div>
+      <div style={css('display:flex;align-items:center;gap:8px;margin-bottom:10px')}>
+        <span style={css('background:var(--bd2);color:var(--mut);font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px')}>{L('نمونه‌ی طراحی', 'Design sample')}</span>
+      </div>
       {vm.ldb_manage ? (
         <div style={css('max-width:800px')}>
           <div

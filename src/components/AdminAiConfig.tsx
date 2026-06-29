@@ -181,9 +181,31 @@ export function AdminAiConfig({ v }: { v: Record<string, any> }) {
 
   const groups = Array.from(new Set(agents.map((a) => (fa ? a.group : a.group_en))))
 
+  const asst = agents.find((a) => a.id === 'assistant_chat')
+  const connected = !!(asst && asst.provider_id && asst.model)
+
   return (
     <div>
       {banner}
+
+      {/* AI connection status */}
+      <div
+        style={css(
+          'margin-bottom:14px;padding:12px 14px;border-radius:12px;display:flex;align-items:center;gap:10px;' +
+            (connected
+              ? 'background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3)'
+              : 'background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3)'),
+        )}
+      >
+        <span style={css(`width:10px;height:10px;border-radius:50%;background:${connected ? 'var(--good)' : 'var(--warn)'}`)}></span>
+        <span style={css('font-size:12.5px;font-weight:700')}>
+          {connected
+            ? L(`هوشِ مصنوعی متصل است → ${asst!.provider_name || asst!.provider_id} · ${asst!.model}`,
+                `AI connected → ${asst!.provider_name || asst!.provider_id} · ${asst!.model}`)
+            : L('هوشِ مصنوعی متصل نیست. یک سرویس‌دهنده اضافه کن و کلید بده، بعد پایین در «۲ · ایجنت‌ها» آن را به «دستیار» وصل کن.',
+                'AI not connected. Add a provider with a key, then assign it to “Assistant” under “2 · Agents” below.')}
+        </span>
+      </div>
 
       {/* ---------- 1) providers ---------- */}
       <div style={css(CARD)}>

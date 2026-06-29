@@ -186,7 +186,8 @@ def upsert_provider(body: ProviderIn):
     return {"ok": True, "id": pid}
 
 
-@app.delete("/api/admin/providers/{pid}", dependencies=[Depends(require_admin)])
+# POST (not DELETE): ArvanCloud CDN times out the DELETE method.
+@app.post("/api/admin/providers/{pid}/delete", dependencies=[Depends(require_admin)])
 def delete_provider(pid: str):
     provs = [p for p in llm.get_providers() if p["id"] != pid]
     llm.save_providers(provs)

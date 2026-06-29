@@ -56,7 +56,8 @@ export const upsertProvider = (p: {
   api_key?: string
   models?: string[]
 }) => jsend<{ ok: boolean; id: string }>('POST', '/admin/providers', p)
-export const deleteProvider = (id: string) => jsend<{ ok: boolean }>('DELETE', `/admin/providers/${id}`)
+// POST (not DELETE): ArvanCloud CDN times out the DELETE method.
+export const deleteProvider = (id: string) => jsend<{ ok: boolean }>('POST', `/admin/providers/${id}/delete`)
 export const getProviderModels = (id: string) => jget<{ models: string[] }>(`/admin/providers/${id}/models`)
 export const testProvider = (id: string) =>
   jsend<{ ok: boolean; sample?: string; detail?: string; model?: string }>('POST', `/admin/providers/${id}/test`)

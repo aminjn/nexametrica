@@ -58,6 +58,22 @@ export async function deleteJob(id: string): Promise<{ ok: boolean }> {
   return r.json()
 }
 
+// generic manual-entry collections (roster, schedule, training, …)
+export async function getData<T>(key: string): Promise<T | null> {
+  const r = await fetch(`${BASE}/data/${key}`)
+  if (!r.ok) throw new Error(`data ${r.status}`)
+  return (await r.json()).value ?? null
+}
+export async function saveData(key: string, value: unknown): Promise<{ ok: boolean }> {
+  const r = await fetch(`${BASE}/data/${key}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ value }),
+  })
+  if (!r.ok) throw new Error(`data ${r.status}`)
+  return r.json()
+}
+
 export async function renameJob(id: string, name: string): Promise<{ ok: boolean }> {
   const r = await fetch(`${BASE}/jobs/${id}/rename`, {
     method: 'POST',

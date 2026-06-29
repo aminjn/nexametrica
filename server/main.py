@@ -19,6 +19,7 @@ import llm
 import store
 import catalog
 import jobs as jobstore
+import userdata
 
 app = FastAPI(title="Nexa Metrica API", version="0.2.0")
 
@@ -322,6 +323,22 @@ def _light(j: dict) -> dict:
     out["has_video"] = bool(vp and os.path.exists(vp))
     out["single_override"] = bool(j.get("single_override"))
     return out
+
+
+# ---------------- user data (manual-entry collections) ----------------
+@app.get("/api/data/{key}")
+def get_data(key: str):
+    if key not in userdata.ALLOWED:
+        raise HTTPException(status_code=404, detail="unknown collection")
+    return {"value": userdata.get(key)}
+
+
+@app.post("/api/data/{key}")
+def put_data(key: str, body: dict):
+    if key not in userdata.ALLOWED:
+        raise HTTPException(status_code=404, detail="unknown collection")
+    userdata.put(key, body.get("value"))
+    return {"ok": True}
 
 
 @app.get("/api/jobs")

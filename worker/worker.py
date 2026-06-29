@@ -443,6 +443,18 @@ def process_video(path: str, progress=None) -> dict:
                 net_edges = [{"from": a, "to": b, "count": c, "team": node_info.get(a, {}).get("team", -1)}
                              for (a, b), c in edges.items() if a in keep and b in keep]
                 net_edges.sort(key=lambda e: -e["count"])
+                # timestamped event log (owner_seq is already de-duped consecutively)
+                events = []
+                for (t0, o0), (t1, o1) in zip(owner_seq, owner_seq[1:]):
+                    ta, tb = tid2team.get(o0, -1), tid2team.get(o1, -1)
+                    if o0 == o1:
+                        continue
+                    if ta == tb and ta in (0, 1):
+                        events.append({"t": round(float(t1), 1), "type": "pass", "team": int(ta),
+                                       "from": track2player.get(o0), "to": track2player.get(o1)})
+                    elif ta in (0, 1) and tb in (0, 1):
+                        events.append({"t": round(float(t1), 1), "type": "recovery", "team": int(tb)})
+
                 def _acc(p, l):
                     return round(100 * p / (p + l)) if (p + l) else None
                 physical["passes"] = {
@@ -450,6 +462,7 @@ def process_video(path: str, progress=None) -> dict:
                     "acc_a": _acc(pass_ct[0], loss_ct[0]), "acc_b": _acc(pass_ct[1], loss_ct[1]),
                     "recov_a": loss_ct[1], "recov_b": loss_ct[0],   # B's losses = A's recoveries
                     "nodes": net_nodes, "edges": net_edges[:80],
+                    "events": events[:500],
                 }
                 print(f"passes: A {pass_ct[0]} / B {pass_ct[1]}, {len(net_edges)} network links", flush=True)
             except Exception as e:

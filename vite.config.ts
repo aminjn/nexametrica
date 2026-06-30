@@ -33,6 +33,11 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,woff2,svg,png,ico}'],
         navigateFallback: 'index.html',
         navigateFallbackDenylist: [/^\/api/],
+        // Apply a new build on the very next reload instead of waiting for every
+        // tab to close — stops users from being stuck on a stale cached version.
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         // Never serve a cached API response; always hit the network.
         runtimeCaching: [
           {

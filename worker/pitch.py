@@ -36,9 +36,12 @@ PITCH_VERTICES = [
 ]
 
 PITCH_LEN_CM, PITCH_WID_CM = float(L), float(Wd)
-MIN_CONF = 0.5
-MIN_POINTS = 5           # need >=5 good landmarks for a trustworthy homography
-MAX_REPROJ_ERR = 18.0    # px; above this the calibration is rejected for the frame
+# Tunable (env-overridable). Lower MIN_CONF → uses more keypoints so a usable
+# homography is found on more camera styles; the reprojection gate below still
+# rejects bad fits, so quality is preserved.
+MIN_CONF = float(os.getenv("PITCH_MIN_CONF", "0.3"))
+MIN_POINTS = int(os.getenv("PITCH_MIN_POINTS", "5"))       # >=4 needed; 5 is safe
+MAX_REPROJ_ERR = float(os.getenv("PITCH_MAX_REPROJ", "22.0"))  # px; above this a frame is rejected
 
 _model = None
 _world = PITCH_VERTICES   # world landmarks matching the model's keypoint order

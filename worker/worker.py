@@ -113,11 +113,18 @@ def _lab_to_hex(c):
     return "#%02x%02x%02x" % (int(r), int(g), int(b))
 
 
-def process_video(path: str, progress=None) -> dict:
+def process_video(path: str, progress=None, source_type: str = "broadcast") -> dict:
     import cv2
     import numpy as np
     import supervision as sv
     from collections import defaultdict
+
+    # Capture-mode hints. Drone/tactical/live are usually a wide, near-static view
+    # where the whole pitch is visible, so calibration frames are easy to find and
+    # there are no broadcast replays/VAR cutaways to reject.
+    topdownish = source_type in ("drone", "tactical")
+    broadcast = source_type == "broadcast"
+    print(f"  process source_type={source_type} (topdownish={topdownish}, broadcast={broadcast})", flush=True)
 
     cap = cv2.VideoCapture(path)
     if not cap.isOpened():
@@ -541,6 +548,7 @@ def process_video(path: str, progress=None) -> dict:
         "pitch_heatmap_b": pitch_heat_b,
         "physical": physical,
         "model": MODEL,
+        "source_type": source_type,
     }
 
 
@@ -586,7 +594,7 @@ def cmd_serve():
                     for chunk in s.iter_bytes():
                         tf.write(chunk)
                 tmp = tf.name
-            res = process_video(tmp)
+            res = process_video(tmp, source_type=job.get("source_type", "broadcast"))
             post_result(jid, res, "done")
             os.unlink(tmp)
             print("  → done", flush=True)

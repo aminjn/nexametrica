@@ -31,9 +31,10 @@ export type Job = {
   error?: string
 }
 
-export async function uploadVideo(file: File): Promise<Job> {
+export async function uploadVideo(file: File, sourceType = 'broadcast'): Promise<Job> {
   const fd = new FormData()
   fd.append('file', file)
+  fd.append('source_type', sourceType)
   const r = await fetch(`${BASE}/videos`, { method: 'POST', body: fd })
   if (!r.ok) throw new Error(`upload ${r.status}`)
   return r.json()

@@ -12,7 +12,7 @@ import json
 import time
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Header, Depends, UploadFile, File
+from fastapi import FastAPI, HTTPException, Header, Depends, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -356,9 +356,13 @@ def load_agent(agent_id: str, ts: int = 0):
 
 
 # ---------------- CV pipeline: videos + jobs + worker ----------------
+VALID_SOURCE_TYPES = {"broadcast", "tactical", "mobile", "drone", "live"}
+
+
 @app.post("/api/videos")
-async def upload_video(file: UploadFile = File(...)):
+async def upload_video(file: UploadFile = File(...), source_type: str = Form("broadcast")):
     os.makedirs(jobstore.VIDEOS, exist_ok=True)
+    st = source_type if source_type in VALID_SOURCE_TYPES else "broadcast"
     job = jobstore.add(file.filename or "video", source="upload")
     dest = os.path.join(jobstore.VIDEOS, f"{job['id']}_{file.filename or 'video'}")
     with open(dest, "wb") as f:
@@ -367,7 +371,7 @@ async def upload_video(file: UploadFile = File(...)):
             if not chunk:
                 break
             f.write(chunk)
-    return jobstore.update(job["id"], video_path=dest)
+    return jobstore.update(job["id"], video_path=dest, source_type=st)
 
 
 def _light(j: dict) -> dict:
@@ -475,7 +479,8 @@ def worker_next():
     j = jobstore.claim_next()
     if not j:
         return {"job": None}
-    return {"job": {"id": j["id"], "name": j["name"], "video_url": f"/api/videos/{j['id']}/file"}}
+    return {"job": {"id": j["id"], "name": j["name"], "video_url": f"/api/videos/{j['id']}/file",
+                    "source_type": j.get("source_type", "broadcast")}}
 
 
 @app.get("/api/videos/{jid}/file", dependencies=[Depends(require_worker)])

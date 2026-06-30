@@ -30,7 +30,20 @@ export function VideoJobs({ v }: { v: Record<string, any> }) {
   const [msg, setMsg] = useState<string | null>(null)
   const [drag, setDrag] = useState(false)
   const [thumbs, setThumbs] = useState<Record<string, string>>({})
+  const [srcType, setSrcType] = useState('broadcast')
   const fileRef = useRef<HTMLInputElement>(null)
+
+  const SOURCES: { id: string; fa: string; en: string }[] = [
+    { id: 'broadcast', fa: 'پخش تلویزیونی', en: 'Broadcast' },
+    { id: 'tactical', fa: 'دوربین تاکتیکی', en: 'Tactical cam' },
+    { id: 'drone', fa: 'پهپاد', en: 'Drone' },
+    { id: 'mobile', fa: 'موبایل', en: 'Mobile' },
+    { id: 'live', fa: 'فید زنده IP', en: 'Live IP feed' },
+  ]
+  const srcLabel = (id?: string) => {
+    const s = SOURCES.find((x) => x.id === id)
+    return s ? (fa ? s.fa : s.en) : ''
+  }
 
   async function refresh() {
     try {
@@ -70,8 +83,8 @@ export function VideoJobs({ v }: { v: Record<string, any> }) {
     setBusy(true)
     setMsg(L('در حال آپلود…', 'Uploading…'))
     try {
-      await uploadVideo(f)
-      setMsg(L('آپلود شد — در صفِ پردازشِ worker.', 'Uploaded — queued for the worker.'))
+      await uploadVideo(f, srcType)
+      setMsg(L(`آپلود شد (${srcLabel(srcType)}) — در صفِ پردازشِ worker.`, `Uploaded (${srcLabel(srcType)}) — queued for the worker.`))
       refresh()
     } catch (err) {
       setMsg(L('آپلود نشد: ', 'Upload failed: ') + String((err as Error).message))
@@ -165,7 +178,20 @@ export function VideoJobs({ v }: { v: Record<string, any> }) {
             </svg>
           </div>
           <div style={css('font-size:13.5px;font-weight:700')}>{busy ? L('در حال آپلود…', 'Uploading…') : L('ویدیو را بکشید و رها کنید', 'Drag & drop a video')}</div>
-          <div style={css('font-size:11px;color:var(--mut)')}>{L('یا کلیک کنید — MOV ،MP4 تا ۸K · پهپاد، موبایل، دوربین تاکتیکی', 'or click — MP4, MOV up to 8K · drone, mobile, tactical cam')}</div>
+          <div style={css('font-size:11px;color:var(--mut)')}>{L('یا کلیک کنید — MOV ،MP4 تا ۸K', 'or click — MP4, MOV up to 8K')}</div>
+        </div>
+        {/* source type — passed to the worker so it adapts to drone / tactical / mobile / live */}
+        <div style={css('display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap')} onClick={(e) => e.stopPropagation()}>
+          <span style={css('font-size:11px;color:var(--mut);font-weight:700')}>{L('نوعِ منبع:', 'Source:')}</span>
+          {SOURCES.map((s) => {
+            const on = srcType === s.id
+            return (
+              <button key={s.id} onClick={() => setSrcType(s.id)}
+                style={css(`height:30px;padding:0 12px;border-radius:20px;border:1px solid ${on ? 'var(--ac)' : 'var(--bd2)'};background:${on ? 'var(--acd)' : 'transparent'};color:${on ? 'var(--ac)' : 'var(--sub)'};font-family:inherit;font-size:11.5px;font-weight:700;cursor:pointer`)}>
+                {fa ? s.fa : s.en}
+              </button>
+            )
+          })}
         </div>
         {msg ? <div style={css('font-size:12px;color:var(--sub);margin-top:12px')}>{msg}</div> : null}
       </div>
@@ -232,6 +258,7 @@ export function VideoJobs({ v }: { v: Record<string, any> }) {
                     </div>
                     <div style={css('font-size:10.5px;color:var(--mut);margin-top:2px')}>
                       {j.source === 'worker' ? L('پردازشِ محلی', 'local process') : L('آپلودِ سایت', 'site upload')}
+                      {(j as any).source_type ? ` · ${srcLabel((j as any).source_type)}` : ''}
                     </div>
                   </div>
                   {(j as any).has_video && j.status !== 'queued' && j.status !== 'processing' ? (

@@ -240,9 +240,9 @@ export function VideoJobs({ v }: { v: Record<string, any> }) {
                       {j.status === 'processing' ? <span style={css('display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ai);margin-inline-end:5px;animation:nx-pulse 1.2s infinite')}></span> : null}
                       {fa ? st.fa : st.en}
                     </span>
-                    {r?.physical?.player_count ? (
+                    {r?.players?.on_screen ? (
                       <span style={css('position:absolute;bottom:9px;inset-inline-end:9px;font-size:10px;font-weight:700;color:#fff;background:rgba(13,15,18,.72);padding:3px 9px;border-radius:20px')} title={L('بازیکنانِ هم‌زمان روی صحنه', 'players on screen at once')}>
-                        {faN(r.physical.player_count)} {L('بازیکن', 'players')}
+                        {faN(r.players.on_screen)} {L('بازیکن', 'players')}
                       </span>
                     ) : null}
                   </div>
@@ -275,7 +275,7 @@ export function VideoJobs({ v }: { v: Record<string, any> }) {
                   <div style={css('padding:0 14px 16px;border-top:1px solid var(--bd)')}>
                     <div style={css('display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0')}>
                       {[
-                        [L('بازیکنان (Re-ID)', 'Players (Re-ID)'), r.physical?.player_count ?? r.players?.avg],
+                        [L('بازیکنانِ هم‌زمان', 'Players on screen'), r.players?.on_screen],
                         [L('میانگینِ هر فریم', 'Avg/frame'), r.players?.avg],
                         [L('ردِ خام (ByteTrack)', 'Raw tracks'), r.players?.unique_tracks],
                         [L('تشخیص توپ', 'Ball detections'), r.ball?.detections],

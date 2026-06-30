@@ -538,6 +538,10 @@ def process_video(path: str, progress=None, source_type: str = "broadcast") -> d
             "avg": round(sum(players_per) / len(players_per), 1) if players_per else 0,
             "max": max(players_per) if players_per else 0,
             "unique_tracks": len(track_ids),
+            # typical players on screen at once (90th pct of per-frame detections).
+            # Computed from raw tracking → ALWAYS available, even if pitch
+            # calibration fails and the metric analytics are skipped.
+            "on_screen": (lambda s: int(round(s[min(len(s) - 1, int(0.9 * len(s)))])) if s else 0)(sorted(players_per)),
         },
         "ball": {"detections": ball_count, "trajectory": ball_pts[:2000]},
         "heatmap": heat.tolist(),

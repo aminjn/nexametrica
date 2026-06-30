@@ -158,6 +158,8 @@ def process_video(path: str, progress=None, source_type: str = "broadcast") -> d
     calib_check = None          # one frame with the pitch reprojected, for visual proof
     pitch_attempts = pitch_hits = 0
     track_xy_m = defaultdict(list)   # track -> [(t_sec, x_m, y_m)] in real pitch metres
+    track_img = defaultdict(list)    # track -> [(t_sec, foot_x_norm, foot_y_norm)] — always
+    bh_acc = []                      # per-frame median player box height (norm) for scale fallback
     pheat = np.zeros((PGRID_H, PGRID_W), dtype=np.int64)
     pheat_t = [np.zeros((PGRID_H, PGRID_W), dtype=np.int64),
                np.zeros((PGRID_H, PGRID_W), dtype=np.int64)]
@@ -232,6 +234,8 @@ def process_video(path: str, progress=None, source_type: str = "broadcast") -> d
                 track_ids.add(ti)
                 frame_players.append((cx, cy, ti))
                 track_heat[ti][gy, gx] += 1
+                if len(track_img[ti]) < 3000:   # timestamped foot point (image space) — always
+                    track_img[ti].append((t_sec, float(cx) / max(1, W), float(xyxy[3]) / max(1, H)))
                 if len(track_pts[ti]) < 80:
                     track_pts[ti].append([round(float(cx) / max(1, W), 4), round(float(cy) / max(1, H), 4)])
                 if len(track_cols[ti]) < 25:
@@ -251,6 +255,8 @@ def process_video(path: str, progress=None, source_type: str = "broadcast") -> d
                         if -5 <= xm <= (pitch_len or 12000) / 100 + 5 and -5 <= ym <= (pitch_wid or 7000) / 100 + 5:
                             track_xy_m[ti].append((t_sec, xm, ym))
         players_per.append(n)
+        if bh_list:
+            bh_acc.append(float(np.median(bh_list)))
 
         # Score this frame as a calibration keyframe candidate. A wide tactical
         # pitch view has MANY players, SPREAD across the frame, with SMALL boxes
@@ -393,6 +399,7 @@ def process_video(path: str, progress=None, source_type: str = "broadcast") -> d
             physical["pitch_m"] = [round(plen, 1), round(pwid, 1)]
             physical["raw_tracks"] = len(track_xy_m)
             physical["numbered"] = len(track_number)
+            physical["approx"] = False     # real metres from calibration
             # Headline player count = typical players ON SCREEN at once (80th pct of
             # per-frame detections). This is stable (~18-24) and never collapses,
             # unlike the Re-ID unique count which over/under-counts on a panning
@@ -487,6 +494,49 @@ def process_video(path: str, progress=None, source_type: str = "broadcast") -> d
             print("physics failed:", e, flush=True)
             physical = None
 
+    # ---- fallback: per-player analytics WITHOUT pitch calibration ----------------
+    # If the pitch homography never locked (common on broadcast/highlight angles),
+    # still produce the player list + distance/speed from image-space tracks, using
+    # an approximate scale from player height (~1.7 m). Clearly flagged approx so the
+    # UI can label it "uncalibrated". This keeps the section from vanishing.
+    if physical is None and track_img:
+        try:
+            import physics
+            import reid
+            med_bh = float(np.median(bh_acc)) if bh_acc else 0.0
+            if not med_bh or med_bh <= 0:
+                med_bh = 0.08
+            m_per_y = 1.7 / med_bh                 # metres per normalized-Y unit (player height)
+            m_per_x = m_per_y * (W / max(1, H))    # keep aspect
+            # resolve jersey numbers from the OCR votes (same rule as calibrated path)
+            track_number = {}
+            for ti, votes in track_nums.items():
+                if votes:
+                    num, score = max(votes.items(), key=lambda kv: kv[1])
+                    if score >= 1.5:
+                        track_number[ti] = num
+            tracklets = []
+            for tid, series in track_img.items():
+                col = [float(c) for c in np.mean(track_cols[tid], axis=0)] if track_cols.get(tid) else None
+                pts = [(t, fx * m_per_x, fy * m_per_y) for (t, fx, fy) in series]
+                tracklets.append({"id": int(tid), "team": tid2team.get(tid, -1),
+                                  "color": col, "number": track_number.get(tid), "points": pts})
+            players = reid.stitch(tracklets)
+            physical = physics.summarise_players(players)
+            physical["pitch_m"] = [105.0, 68.0]
+            physical["raw_tracks"] = len(track_img)
+            physical["numbered"] = len(track_number)
+            physical["approx"] = True              # distances/speeds are estimates, not calibrated
+            physical["reid_players"] = physical["player_count"]
+            if players_per:
+                _sp = sorted(players_per)
+                physical["player_count"] = int(round(_sp[min(len(_sp) - 1, int(0.9 * len(_sp)))]))
+            print(f"approx physical (uncalibrated): reid {physical['reid_players']} / "
+                  f"on-screen {physical['player_count']} players", flush=True)
+        except Exception as e:
+            print("approx physics failed:", e, flush=True)
+            physical = None
+
     # ---- calibration payload: keyframe + team-tagged player points (image space) ----
     points = []
     for tid, plist in track_pts.items():
@@ -554,7 +604,7 @@ def process_video(path: str, progress=None, source_type: str = "broadcast") -> d
         "points": points,
         "keyframe": keyframe,
         "keyframes": keyframes,
-        "calibration_auto": bool(pitch_ok and physical),
+        "calibration_auto": bool(pitch_ok and physical and not physical.get("approx")),
         "calibration_check": calibration_check,
         "pitch_heatmap": pitch_heat,
         "pitch_heatmap_a": pitch_heat_a,

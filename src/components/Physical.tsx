@@ -35,16 +35,21 @@ export function Physical({ v, job }: { v: Record<string, any>; job: any }) {
   return (
     <div style={css('margin-top:14px;background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px')}>
       <div style={css('display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap')}>
-        <span style={css('background:var(--aid);color:var(--ai);font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px')}>
-          {L('کالیبراسیونِ خودکار', 'Auto-calibrated')}
+        <span style={css(`font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;${phys.approx ? 'background:var(--warnd);color:var(--warn)' : 'background:var(--aid);color:var(--ai)'}`)}>
+          {phys.approx ? L('تخمینی (بدون کالیبراسیون)', 'Approximate (uncalibrated)') : L('کالیبراسیونِ خودکار', 'Auto-calibrated')}
         </span>
-        <div style={css('font-weight:800;font-size:13.5px')}>{L('تحلیلِ فیزیکیِ واقعی', 'Real physical analytics')}</div>
+        <div style={css('font-weight:800;font-size:13.5px')}>{L('تحلیلِ فیزیکی', 'Physical analytics')}</div>
       </div>
       <div style={css('font-size:11px;color:var(--mut);margin-bottom:10px;line-height:1.7')}>
-        {L(
-          `مختصاتِ واقعیِ زمین (متر) از هوموگرافیِ هر فریم — زمینِ ${faN(plen)}×${faN(pwid)} متر. ~${faN(phys.player_count || 0)} بازیکنِ هم‌زمان روی صحنه؛ ${faN(phys.reid_players ?? 0)} بازیکنِ ردیابی‌شده (از ${faN(phys.raw_tracks || 0)} ردِ خام).`,
-          `Real pitch coordinates (metres) from per-frame homography — ${plen}×${pwid} m pitch. ~${phys.player_count || 0} players on screen; ${phys.reid_players ?? 0} tracked after Re-ID (from ${phys.raw_tracks || 0} raw tracks).`,
-        )}
+        {phys.approx
+          ? L(
+              `کالیبراسیونِ زمین روی این کلیپ نگرفت، پس مسافت/سرعت با مقیاسِ تخمینی (از قدِ بازیکن) محاسبه شده — تقریبی است. ~${faN(phys.player_count || 0)} بازیکنِ هم‌زمان روی صحنه؛ ${faN(phys.reid_players ?? 0)} ردیابی‌شده (از ${faN(phys.raw_tracks || 0)} ردِ خام).`,
+              `Pitch calibration didn't lock on this clip, so distance/speed use an approximate scale (player height) — treat as estimates. ~${phys.player_count || 0} players on screen; ${phys.reid_players ?? 0} tracked (from ${phys.raw_tracks || 0} raw tracks).`,
+            )
+          : L(
+              `مختصاتِ واقعیِ زمین (متر) از هوموگرافیِ هر فریم — زمینِ ${faN(plen)}×${faN(pwid)} متر. ~${faN(phys.player_count || 0)} بازیکنِ هم‌زمان روی صحنه؛ ${faN(phys.reid_players ?? 0)} بازیکنِ ردیابی‌شده (از ${faN(phys.raw_tracks || 0)} ردِ خام).`,
+              `Real pitch coordinates (metres) from per-frame homography — ${plen}×${pwid} m pitch. ~${phys.player_count || 0} players on screen; ${phys.reid_players ?? 0} tracked after Re-ID (from ${phys.raw_tracks || 0} raw tracks).`,
+            )}
       </div>
 
       {/* visual proof: pitch model reprojected onto a real frame */}
@@ -155,7 +160,7 @@ export function Physical({ v, job }: { v: Record<string, any>; job: any }) {
         </div>
       ) : fr.pitch_heatmap ? (
         <Heatmap grid={fr.pitch_heatmap} />
-      ) : (
+      ) : phys.approx ? null : (
         <div style={css('font-size:11px;color:var(--mut)')}>{L('در حال بارگذاریِ نقشه…', 'Loading heatmap…')}</div>
       )}
     </div>

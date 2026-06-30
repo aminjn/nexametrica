@@ -340,7 +340,7 @@ export function VideoJobs({ v }: { v: Record<string, any> }) {
                         {faN(r.video.width)}×{faN(r.video.height)} · {faN(r.video.fps)}fps · {faN(r.processed_frames)} {L('فریمِ پردازش‌شده', 'frames processed')} · {r.model}
                       </div>
                     ) : null}
-                    {r.calibration_auto && r.physical ? <Physical v={v} job={j} /> : null}
+                    {r.physical ? <Physical v={v} job={j} /> : null}
                     {(j as any).calibratable ? (
                       <div style={css('margin-top:12px')}>
                         <button onClick={() => setCalib(calib === j.id ? null : j.id)} style={css('height:34px;padding:0 15px;background:var(--card2);border:1px solid var(--bd2);border-radius:9px;color:var(--ac);font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:7px')}>

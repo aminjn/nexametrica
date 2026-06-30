@@ -14,11 +14,11 @@ Works best on >=720p footage — at 360p shirt numbers are usually too small.
 import os
 
 _reader = None
-MIN_BOX_H = 30     # px; smaller player boxes can't carry a readable number
+MIN_BOX_H = 26     # px; smaller player boxes can't carry a readable number
 
 
 def available():
-    if os.getenv("JERSEY", "0") in ("0", "false", "no", ""):
+    if os.getenv("JERSEY", "1") in ("0", "false", "no", ""):
         return False
     try:
         load()

@@ -241,7 +241,7 @@ export function VideoJobs({ v }: { v: Record<string, any> }) {
                       {fa ? st.fa : st.en}
                     </span>
                     {r?.physical?.player_count ? (
-                      <span style={css('position:absolute;bottom:9px;inset-inline-end:9px;font-size:10px;font-weight:700;color:#fff;background:rgba(13,15,18,.72);padding:3px 9px;border-radius:20px')} title={L('بازیکنانِ یکتا پس از Re-ID', 'unique players after Re-ID')}>
+                      <span style={css('position:absolute;bottom:9px;inset-inline-end:9px;font-size:10px;font-weight:700;color:#fff;background:rgba(13,15,18,.72);padding:3px 9px;border-radius:20px')} title={L('بازیکنانِ هم‌زمان روی صحنه', 'players on screen at once')}>
                         {faN(r.physical.player_count)} {L('بازیکن', 'players')}
                       </span>
                     ) : null}

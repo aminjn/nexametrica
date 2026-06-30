@@ -393,7 +393,16 @@ def process_video(path: str, progress=None, source_type: str = "broadcast") -> d
             physical["pitch_m"] = [round(plen, 1), round(pwid, 1)]
             physical["raw_tracks"] = len(track_xy_m)
             physical["numbered"] = len(track_number)
-            print(f"re-id: {len(track_xy_m)} tracks -> {physical['player_count']} players "
+            # Headline player count = typical players ON SCREEN at once (80th pct of
+            # per-frame detections). This is stable (~18-24) and never collapses,
+            # unlike the Re-ID unique count which over/under-counts on a panning
+            # broadcast. Keep the Re-ID count separately for the detailed list.
+            physical["reid_players"] = physical["player_count"]
+            if players_per:
+                _sp = sorted(players_per)
+                physical["player_count"] = int(round(_sp[min(len(_sp) - 1, int(0.8 * len(_sp)))]))
+            print(f"re-id: {len(track_xy_m)} tracks -> reid {physical['reid_players']} / "
+                  f"on-screen {physical['player_count']} players "
                   f"({len(track_number)} with jersey numbers)", flush=True)
 
             # ---- pass detection + passing network (from the ball-owner sequence) ----

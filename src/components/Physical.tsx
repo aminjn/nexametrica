@@ -42,8 +42,8 @@ export function Physical({ v, job }: { v: Record<string, any>; job: any }) {
       </div>
       <div style={css('font-size:11px;color:var(--mut);margin-bottom:10px;line-height:1.7')}>
         {L(
-          `مختصاتِ واقعیِ زمین (متر) از هوموگرافیِ هر فریم — زمینِ ${faN(plen)}×${faN(pwid)} متر. ${faN(phys.player_count || 0)} بازیکن (پس از Re-ID؛ از ${faN(phys.raw_tracks || 0)} ردِ خام).`,
-          `Real pitch coordinates (metres) from per-frame homography — ${plen}×${pwid} m pitch. ${phys.player_count || 0} players after Re-ID (from ${phys.raw_tracks || 0} raw tracks).`,
+          `مختصاتِ واقعیِ زمین (متر) از هوموگرافیِ هر فریم — زمینِ ${faN(plen)}×${faN(pwid)} متر. ~${faN(phys.player_count || 0)} بازیکنِ هم‌زمان روی صحنه؛ ${faN(phys.reid_players ?? 0)} بازیکنِ ردیابی‌شده (از ${faN(phys.raw_tracks || 0)} ردِ خام).`,
+          `Real pitch coordinates (metres) from per-frame homography — ${plen}×${pwid} m pitch. ~${phys.player_count || 0} players on screen; ${phys.reid_players ?? 0} tracked after Re-ID (from ${phys.raw_tracks || 0} raw tracks).`,
         )}
       </div>
 

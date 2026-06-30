@@ -240,9 +240,9 @@ export function VideoJobs({ v }: { v: Record<string, any> }) {
                       {j.status === 'processing' ? <span style={css('display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ai);margin-inline-end:5px;animation:nx-pulse 1.2s infinite')}></span> : null}
                       {fa ? st.fa : st.en}
                     </span>
-                    {r?.players ? (
-                      <span style={css('position:absolute;bottom:9px;inset-inline-end:9px;font-size:10px;font-weight:700;color:#fff;background:rgba(13,15,18,.72);padding:3px 9px;border-radius:20px')}>
-                        {faN(r.players.unique_tracks)} {L('بازیکن', 'players')}
+                    {r?.physical?.player_count ? (
+                      <span style={css('position:absolute;bottom:9px;inset-inline-end:9px;font-size:10px;font-weight:700;color:#fff;background:rgba(13,15,18,.72);padding:3px 9px;border-radius:20px')} title={L('بازیکنانِ یکتا پس از Re-ID', 'unique players after Re-ID')}>
+                        {faN(r.physical.player_count)} {L('بازیکن', 'players')}
                       </span>
                     ) : null}
                   </div>
@@ -275,9 +275,9 @@ export function VideoJobs({ v }: { v: Record<string, any> }) {
                   <div style={css('padding:0 14px 16px;border-top:1px solid var(--bd)')}>
                     <div style={css('display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0')}>
                       {[
-                        [L('بازیکن (میانگین)', 'Players (avg)'), r.players?.avg],
-                        [L('بیشینه', 'Max'), r.players?.max],
-                        [L('ردِ یکتا', 'Unique tracks'), r.players?.unique_tracks],
+                        [L('بازیکنان (Re-ID)', 'Players (Re-ID)'), r.physical?.player_count ?? r.players?.avg],
+                        [L('میانگینِ هر فریم', 'Avg/frame'), r.players?.avg],
+                        [L('ردِ خام (ByteTrack)', 'Raw tracks'), r.players?.unique_tracks],
                         [L('تشخیص توپ', 'Ball detections'), r.ball?.detections],
                       ].map(([lab, val], i) => (
                         <div key={i} style={css('background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:11px 12px')}>

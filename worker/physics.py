@@ -188,7 +188,7 @@ REL_PRESENCE = 0.18    # keep players present at least 18% as long as the busies
 MAX_PLAYERS = 40       # hard ceiling (22 on pitch + subs/keepers/refs)
 
 
-def summarise_players(players, min_seconds=15.0):
+def summarise_players(players, min_seconds=12.0):
     """Per-player stats after Re-ID stitching. players: [{player, team, tracks,
     points:[(t,x,y)...]}]. Returns per-player + per-team rollup + player_count."""
     # 1) candidates: real movement + a minimum absolute presence
@@ -209,8 +209,10 @@ def summarise_players(players, min_seconds=15.0):
     # 2) relative-presence filter: drop low-presence fragments, then cap
     raw_players = len(cand)
     if cand:
+        # relative-presence only (no extra absolute floor here) so the busiest
+        # players always survive — a clip with real players never drops to zero.
         max_secs = max(c["seconds"] for c in cand)
-        cutoff = max(min_seconds, REL_PRESENCE * max_secs)
+        cutoff = REL_PRESENCE * max_secs
         kept = [c for c in cand if c["seconds"] >= cutoff]
         kept.sort(key=lambda r: r["seconds"], reverse=True)
         kept = kept[:MAX_PLAYERS]

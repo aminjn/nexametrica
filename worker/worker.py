@@ -32,7 +32,7 @@ def _env(key: str, default: str) -> str:
 API_BASE = _env("API_BASE", "https://nexametrica.ir/api").rstrip("/")
 WORKER_TOKEN = _env("WORKER_TOKEN", "")
 MODEL = _env("MODEL", "yolo11m.pt")
-CONF = float(_env("CONF", "0.3"))
+CONF = float(_env("CONF", "0.2"))   # lower → catches small/dark/far players (night & wide shots)
 SAMPLE = int(_env("SAMPLE", "3"))      # process every Nth frame
 IMGSZ = int(_env("IMGSZ", "1280"))
 DEVICE = _env("DEVICE", "0")           # "0" for GPU, "cpu" otherwise
@@ -400,7 +400,7 @@ def process_video(path: str, progress=None, source_type: str = "broadcast") -> d
             physical["reid_players"] = physical["player_count"]
             if players_per:
                 _sp = sorted(players_per)
-                physical["player_count"] = int(round(_sp[min(len(_sp) - 1, int(0.8 * len(_sp)))]))
+                physical["player_count"] = int(round(_sp[min(len(_sp) - 1, int(0.9 * len(_sp)))]))
             print(f"re-id: {len(track_xy_m)} tracks -> reid {physical['reid_players']} / "
                   f"on-screen {physical['player_count']} players "
                   f"({len(track_number)} with jersey numbers)", flush=True)

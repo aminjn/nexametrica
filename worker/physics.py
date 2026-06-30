@@ -179,39 +179,62 @@ def speed_profile(series, max_speed=MAX_SPEED):
     return zones, sprints
 
 
-def summarise_players(players, min_seconds=12.0):
+# A real match has ~22 players on the pitch plus subs/refs near the touchline.
+# Re-ID on a panning broadcast can't perfectly merge players who leave and
+# re-enter the frame, so it tends to OVER-count. We drop tracklets whose total
+# on-screen presence is small relative to the main population (likely fragments /
+# spectators / refs), and cap to a realistic upper bound.
+REL_PRESENCE = 0.18    # keep players present at least 18% as long as the busiest
+MAX_PLAYERS = 40       # hard ceiling (22 on pitch + subs/keepers/refs)
+
+
+def summarise_players(players, min_seconds=15.0):
     """Per-player stats after Re-ID stitching. players: [{player, team, tracks,
     points:[(t,x,y)...]}]. Returns per-player + per-team rollup + player_count."""
-    out = []
-    team_dist = defaultdict(float)
-    team_top = defaultdict(float)
-    team_n = defaultdict(int)
-    zones_total = [0.0] * 5
-    sprints_total = 0
+    # 1) candidates: real movement + a minimum absolute presence
+    cand = []
     for pl in players:
         dist, avg, mx, secs = track_metrics(pl["points"])
         if secs < min_seconds or dist <= 0:
             continue
         z, sp = speed_profile(pl["points"])
-        for i in range(5):
-            zones_total[i] += z[i]
-        sprints_total += sp
-        team = pl.get("team", -1)
-        out.append({
-            "player": pl["player"],
-            "number": pl.get("number"),
-            "team": int(team),
-            "tracks": pl.get("tracks", 1),
-            "distance_m": round(dist, 1),
-            "seconds": round(secs, 1),
-            "avg_speed_kmh": round(avg * 3.6, 1),
-            "max_speed_kmh": round(mx * 3.6, 1),
+        cand.append({
+            "player": pl["player"], "number": pl.get("number"),
+            "team": int(pl.get("team", -1)), "tracks": pl.get("tracks", 1),
+            "distance_m": round(dist, 1), "seconds": round(secs, 1),
+            "avg_speed_kmh": round(avg * 3.6, 1), "max_speed_kmh": round(mx * 3.6, 1),
+            "_mx": mx, "_z": z, "_sp": sp,
         })
+
+    # 2) relative-presence filter: drop low-presence fragments, then cap
+    raw_players = len(cand)
+    if cand:
+        max_secs = max(c["seconds"] for c in cand)
+        cutoff = max(min_seconds, REL_PRESENCE * max_secs)
+        kept = [c for c in cand if c["seconds"] >= cutoff]
+        kept.sort(key=lambda r: r["seconds"], reverse=True)
+        kept = kept[:MAX_PLAYERS]
+    else:
+        kept = []
+
+    # 3) rollups over the kept players only
+    team_dist = defaultdict(float)
+    team_top = defaultdict(float)
+    team_n = defaultdict(int)
+    zones_total = [0.0] * 5
+    sprints_total = 0
+    for c in kept:
+        for i in range(5):
+            zones_total[i] += c["_z"][i]
+        sprints_total += c["_sp"]
+        team = c["team"]
         if team in (0, 1):
-            team_dist[team] += dist
+            team_dist[team] += c["distance_m"]
             team_n[team] += 1
-            if secs >= 3.0:
-                team_top[team] = max(team_top[team], mx)
+            if c["seconds"] >= 3.0:
+                team_top[team] = max(team_top[team], c["_mx"])
+
+    out = [{k: v for k, v in c.items() if not k.startswith("_")} for c in kept]
     out.sort(key=lambda r: r["distance_m"], reverse=True)
     for i, p in enumerate(out):       # clean sequential rank (1..N), not raw track id
         p["player"] = i + 1
@@ -226,6 +249,7 @@ def summarise_players(players, min_seconds=12.0):
                 "top_speed_kmh": round(team_top[k] * 3.6, 1),
             })
     return {"players": out[:28], "teams": teams, "player_count": len(out),
+            "raw_players": raw_players,
             "speed_zones": [round(z, 1) for z in zones_total],
             "sprints": sprints_total}
 

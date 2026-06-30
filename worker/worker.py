@@ -157,6 +157,7 @@ def process_video(path: str, progress=None, source_type: str = "broadcast") -> d
     pitch_len = pitch_wid = None
     calib_check = None          # one frame with the pitch reprojected, for visual proof
     pitch_attempts = pitch_hits = 0
+    calib_diag = {"kp_total": 0, "kp_conf": 0, "used": 0, "reasons": {}, "errs": []}
     track_xy_m = defaultdict(list)   # track -> [(t_sec, x_m, y_m)] in real pitch metres
     track_img = defaultdict(list)    # track -> [(t_sec, foot_x_norm, foot_y_norm)] — always
     bh_acc = []                      # per-frame median player box height (norm) for scale fallback
@@ -196,6 +197,16 @@ def process_video(path: str, progress=None, source_type: str = "broadcast") -> d
             pitch_attempts += 1
             try:
                 hh = pitch_mod.homography(frame)
+                # accumulate diagnostics (why frames calibrate or not)
+                info = getattr(pitch_mod, "last_info", None)
+                if info:
+                    calib_diag["kp_total"] += info.get("kp_total", 0)
+                    calib_diag["kp_conf"] += info.get("kp_conf", 0)
+                    calib_diag["used"] += info.get("used", 0)
+                    r = info.get("reason", "")
+                    calib_diag["reasons"][r] = calib_diag["reasons"].get(r, 0) + 1
+                    if info.get("err") is not None:
+                        calib_diag["errs"].append(info["err"])
                 if hh is not None:
                     cur_H, pitch_len, pitch_wid = hh
                     pitch_hits += 1
@@ -297,9 +308,26 @@ def process_video(path: str, progress=None, source_type: str = "broadcast") -> d
 
     cap.release()
     dur = (total / fps) if total else 0
+    calib_debug = None
     if PITCH:
+        a = max(1, pitch_attempts)
+        errs = calib_diag["errs"]
+        calib_debug = {
+            "attempts": pitch_attempts, "hits": pitch_hits,
+            "kp_total_avg": round(calib_diag["kp_total"] / a, 1),
+            "kp_conf_avg": round(calib_diag["kp_conf"] / a, 1),
+            "used_avg": round(calib_diag["used"] / a, 1),
+            "reasons": calib_diag["reasons"],
+            "err_min": round(min(errs), 1) if errs else None,
+            "err_avg": round(sum(errs) / len(errs), 1) if errs else None,
+            "imgsz": getattr(pitch_mod, "PITCH_IMGSZ", None) if 'pitch_mod' in dir() else None,
+        }
         print(f"pitch calibration: {pitch_hits}/{pitch_attempts} frames calibrated, "
               f"{len(track_xy_m)} tracks with real positions", flush=True)
+        print(f"  calib-diag: kp_total~{calib_debug['kp_total_avg']} "
+              f"kp>=conf~{calib_debug['kp_conf_avg']} used~{calib_debug['used_avg']} "
+              f"reasons={calib_debug['reasons']} err_min={calib_debug['err_min']} "
+              f"err_avg={calib_debug['err_avg']} imgsz={calib_debug['imgsz']}", flush=True)
 
     # ---- team separation by jersey colour (KMeans on per-track median Lab) ----
     # If the two colour clusters are too close, it's a single kit (e.g. a training
@@ -612,6 +640,7 @@ def process_video(path: str, progress=None, source_type: str = "broadcast") -> d
         "physical": physical,
         "model": MODEL,
         "source_type": source_type,
+        "calib_debug": calib_debug,
     }
 
 

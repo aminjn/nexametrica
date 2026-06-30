@@ -51,6 +51,12 @@ export function Physical({ v, job }: { v: Record<string, any>; job: any }) {
               `Real pitch coordinates (metres) from per-frame homography — ${plen}×${pwid} m pitch. ~${phys.player_count || 0} players on screen; ${phys.reid_players ?? 0} tracked after Re-ID (from ${phys.raw_tracks || 0} raw tracks).`,
             )}
       </div>
+      {phys.approx && r.calib_debug ? (
+        <div style={css('font-size:10px;color:var(--mut);font-family:monospace;margin-bottom:10px;background:var(--bg2);border:1px solid var(--bd);border-radius:8px;padding:8px 10px;line-height:1.7')}>
+          {L('تشخیصِ کالیبراسیون', 'calib diag')}: {faN(r.calib_debug.hits)}/{faN(r.calib_debug.attempts)} · kp~{faN(r.calib_debug.kp_total_avg)} · kp≥conf~{faN(r.calib_debug.kp_conf_avg)} · used~{faN(r.calib_debug.used_avg)} · err_min={r.calib_debug.err_min ?? '—'} · imgsz={r.calib_debug.imgsz ?? '—'}
+          <br />reasons: {Object.entries(r.calib_debug.reasons || {}).map(([k, v]) => `${k}:${v}`).join(' · ')}
+        </div>
+      ) : null}
 
       {/* visual proof: pitch model reprojected onto a real frame */}
       {fr.calibration_check ? (

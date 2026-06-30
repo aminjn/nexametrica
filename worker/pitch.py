@@ -42,6 +42,11 @@ PITCH_LEN_CM, PITCH_WID_CM = float(L), float(Wd)
 MIN_CONF = float(os.getenv("PITCH_MIN_CONF", "0.3"))
 MIN_POINTS = int(os.getenv("PITCH_MIN_POINTS", "5"))       # >=4 needed; 5 is safe
 MAX_REPROJ_ERR = float(os.getenv("PITCH_MAX_REPROJ", "22.0"))  # px; above this a frame is rejected
+PITCH_IMGSZ = int(os.getenv("PITCH_IMGSZ", "1280"))        # keypoint inference resolution (distant lines need it)
+
+# Phase-1 diagnostics: the last homography() call records why it succeeded/failed
+# so the worker can aggregate and print exactly what's happening, instead of guessing.
+last_info = {}
 
 _model = None
 _world = PITCH_VERTICES   # world landmarks matching the model's keypoint order
@@ -113,29 +118,69 @@ def solve_homography(img_pts, world_pts):
 def homography(frame, min_conf=MIN_CONF):
     """Run the model on a frame; return (H, length_cm, width_cm) or None.
 
-    H maps image pixels -> pitch centimetres.
+    H maps image pixels -> pitch centimetres. Records diagnostics in `last_info`.
     """
     import numpy as np
+    global last_info
+    info = {"kp_total": 0, "kp_conf": 0, "used": 0, "reason": "", "err": None}
+    last_info = info
     model = load()
-    res = model.predict(frame, verbose=False)[0]
+    res = model.predict(frame, verbose=False, imgsz=PITCH_IMGSZ)[0]
     kp = getattr(res, "keypoints", None)
     if kp is None or kp.xy is None or len(kp.xy) == 0:
+        info["reason"] = "no-keypoints"
         return None
     xy = kp.xy[0].cpu().numpy() if hasattr(kp.xy[0], "cpu") else np.asarray(kp.xy[0])
     if kp.conf is not None:
         conf = kp.conf[0].cpu().numpy() if hasattr(kp.conf[0], "cpu") else np.asarray(kp.conf[0])
     else:
         conf = np.ones(len(xy))
+    info["kp_total"] = int(sum(1 for p in xy if (p[0] > 0 or p[1] > 0)))
+    info["kp_conf"] = int(sum(1 for i in range(min(len(xy), len(conf))) if conf[i] >= min_conf))
     n = min(len(xy), len(_world))
     img_pts, world_pts = [], []
     for i in range(n):
         if conf[i] >= min_conf and (xy[i][0] > 0 or xy[i][1] > 0):
             img_pts.append(xy[i])
             world_pts.append(_world[i])
-    H = solve_homography(img_pts, world_pts)
-    if H is None:
+    info["used"] = len(img_pts)
+    if len(img_pts) < MIN_POINTS:
+        info["reason"] = f"too-few-points({len(img_pts)}<{MIN_POINTS})"
         return None
+    H, err = _solve_with_err(img_pts, world_pts)
+    info["err"] = round(err, 1) if err is not None else None
+    if H is None:
+        info["reason"] = "no-homography" if err is None else f"reproj-too-high({round(err,1)}>{MAX_REPROJ_ERR})"
+        return None
+    info["reason"] = "ok"
     return H, PITCH_LEN_CM, PITCH_WID_CM
+
+
+def _solve_with_err(img_pts, world_pts):
+    """Like solve_homography but also returns the mean reprojection error (for diagnostics)."""
+    import numpy as np
+    import cv2
+    img_pts = np.asarray(img_pts, dtype=np.float64)
+    world_pts = np.asarray(world_pts, dtype=np.float64)
+    if len(img_pts) < MIN_POINTS or len(img_pts) != len(world_pts):
+        return None, None
+    H, mask = cv2.findHomography(img_pts, world_pts, cv2.RANSAC, 8.0)
+    if H is None:
+        return None, None
+    try:
+        Hi = np.linalg.inv(H)
+    except np.linalg.LinAlgError:
+        return None, None
+    inl = mask.ravel().astype(bool) if mask is not None else np.ones(len(img_pts), bool)
+    if int(inl.sum()) < MIN_POINTS:
+        return None, None
+    wp = np.hstack([world_pts[inl], np.ones((int(inl.sum()), 1))])
+    proj = (Hi @ wp.T).T
+    proj = proj[:, :2] / proj[:, 2:3]
+    err = float(np.sqrt(((proj - img_pts[inl]) ** 2).sum(axis=1)).mean())
+    if err > MAX_REPROJ_ERR:
+        return None, err
+    return H, err
 
 
 def project(H, x_px, y_px):

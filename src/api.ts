@@ -120,3 +120,15 @@ export async function generateReport(context: unknown, lang: string): Promise<st
   const d = (await r.json()) as { text: string }
   return d.text
 }
+
+export type AiRosterPlayer = { number: string; name: string; position: string }
+export async function aiRoster(query: string, lang: string): Promise<AiRosterPlayer[]> {
+  const r = await fetch(`${BASE}/ai/roster`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query, lang }),
+  })
+  if (!r.ok) throw new Error(`ai/roster ${r.status}`)
+  const d = (await r.json()) as { players: AiRosterPlayer[] }
+  return d.players || []
+}

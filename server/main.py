@@ -7,6 +7,8 @@ providers (keys server-side only) and assign a provider+model to each agent
 this same service later.
 """
 import os
+import re
+import json
 import time
 from typing import Optional
 
@@ -70,6 +72,11 @@ class ChatReq(BaseModel):
 
 class ReportReq(BaseModel):
     context: dict = {}
+    lang: str = "fa"
+
+
+class RosterAIReq(BaseModel):
+    query: str            # club or league name, e.g. "پرسپولیس" / "Persepolis"
     lang: str = "fa"
 
 
@@ -148,6 +155,65 @@ def report(req: ReportReq):
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"report unavailable: {e}")
     return {"text": text}
+
+
+def _extract_json_array(text: str):
+    """Pull the first JSON array out of an LLM response (handles ```json fences)."""
+    m = re.search(r"\[.*\]", text, re.S)
+    if not m:
+        return []
+    try:
+        data = json.loads(m.group(0))
+        return data if isinstance(data, list) else []
+    except Exception:
+        return []
+
+
+@app.post("/api/ai/roster")
+def ai_roster(req: RosterAIReq):
+    """Ask the configured LLM for the squad of a club/league and return a clean
+    list of players the frontend can add to the roster. 100% via the admin-
+    configured provider (e.g. GapGPT) — no extra third-party API."""
+    q = (req.query or "").strip()
+    if not q:
+        raise HTTPException(status_code=400, detail="query required")
+    if req.lang == "fa":
+        instruction = (
+            f"فهرستِ بازیکنانِ تیمِ «{q}» را بده. فقط یک آرایه‌ی JSON برگردان، بدونِ هیچ توضیحِ اضافه. "
+            'هر عضو یک شیء با این کلیدها: {"number": شماره‌ی پیراهن به‌صورت رشته, "name": نامِ کامل به فارسی, "position": پست به فارسی}. '
+            "اگر شماره را مطمئن نیستی، رشته‌ی خالی بگذار. حداکثر ۳۰ بازیکن. فقط بازیکنانی که واقعاً می‌دانی؛ از ساختنِ اسمِ جعلی پرهیز کن."
+        )
+    else:
+        instruction = (
+            f'List the players of "{q}". Return ONLY a JSON array, no prose. '
+            'Each item is an object: {"number": jersey number as a string, "name": full name, "position": position}. '
+            "Leave number empty if unsure. Max 30 players. Only players you actually know; do not invent names."
+        )
+    messages = [
+        {"role": "system", "content": "You are a precise football data assistant. You output only valid JSON when asked."},
+        {"role": "user", "content": instruction},
+    ]
+    cfg = llm.effective_cfg("report_writer") or llm.effective_cfg("assistant_chat")
+    if not cfg or not cfg.get("api_key"):
+        raise HTTPException(status_code=503, detail="no AI provider configured")
+    try:
+        text = llm.chat(cfg, messages, max_tokens=1400)
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"ai roster unavailable: {e}")
+    raw = _extract_json_array(text)
+    players = []
+    for it in raw:
+        if not isinstance(it, dict):
+            continue
+        name = str(it.get("name") or "").strip()
+        if not name:
+            continue
+        players.append({
+            "number": re.sub(r"\D", "", str(it.get("number") or ""))[:3],
+            "name": name[:60],
+            "position": str(it.get("position") or "").strip()[:40],
+        })
+    return {"players": players}
 
 
 # ---------------- admin: providers ----------------
